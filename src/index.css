@@ -1,1 +1,100 @@
 @import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * Synthex — "drafting blueprint" theme
+ * Navy schematic backdrop + framed instrument panels + ink highlights
+ * ------------------------------------------------------------------ */
+
+:root {
+  --bp-ink: #0a1722; /* page base */
+  --bp-panel: #0f2433; /* panel fill */
+  --bp-line: #2dd4bf; /* teal grid/structure */
+  --bp-edge: rgba(94, 234, 212, 0.35);
+  --bp-edge-soft: rgba(94, 234, 212, 0.14);
+  --bp-amber: #fbbf24; /* marking ink */
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
+    monospace;
+  color: #cbe7ea;
+}
+
+/* Blueprint grid: fine minor lines + heavier major lines for depth. */
+.blueprint-bg {
+  background-color: var(--bp-ink);
+  background-image:
+    linear-gradient(var(--bp-edge-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bp-edge-soft) 1px, transparent 1px),
+    linear-gradient(rgba(94, 234, 212, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 234, 212, 0.05) 1px, transparent 1px);
+  background-size:
+    120px 120px,
+    120px 120px,
+    24px 24px,
+    24px 24px;
+  background-position: -1px -1px;
+}
+
+/* Framed instrument panel with a layered inner draft line for depth. */
+.panel {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(19, 45, 62, 0.92),
+    rgba(11, 28, 40, 0.92)
+  );
+  border: 1px solid var(--bp-edge);
+  box-shadow:
+    0 18px 40px -22px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(148, 233, 219, 0.08);
+  backdrop-filter: blur(2px);
+}
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid var(--bp-edge-soft);
+  pointer-events: none;
+}
+
+/* Engineering "title block" — fielded header like a drawing's name plate. */
+.titleblock {
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(94, 234, 212, 0.05) 0 8px,
+      transparent 8px 16px
+    ),
+    rgba(15, 36, 51, 0.9);
+  border: 1px solid var(--bp-edge);
+  box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.9);
+}
+
+/* Slim, themed scrollbar (replaces the default chunky OS one). */
+.scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: #1d6f6a transparent;
+}
+.scroll-slim::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scroll-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background-color: #1d6f6a;
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.scroll-slim::-webkit-scrollbar-thumb:hover {
+  background-color: #2dd4bf;
+}

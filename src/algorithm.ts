@@ -39,6 +39,38 @@ class Implicant {
   }
 }
 
+export class Table {
+  inputs: number[] = [];
+  outputs: CellState[] = [];
+
+  constructor(inputs: number[] = [], outputs: CellState[] = []) {
+    this.inputs = inputs;
+    this.outputs = outputs;
+  }
+
+  get numVars(): number {
+    return Math.log2(this.inputs.length);
+  }
+
+  get minterms(): number[] {
+    return this.inputs.filter((_, i) => this.outputs[i] === CellState.True);
+  }
+
+  get maxterms(): number[] {
+    return this.inputs.filter((_, i) => this.outputs[i] === CellState.False);
+  }
+
+  get dontcares(): number[] {
+    return this.inputs.filter((_, i) => this.outputs[i] === CellState.Any);
+  }
+
+  toTerms(isPOS: boolean): Terms {
+    return isPOS
+      ? { minMaxTerms: this.maxterms, dontcares: this.dontcares }
+      : { minMaxTerms: this.minterms, dontcares: this.dontcares };
+  }
+}
+
 // gray code of an index: gray(0,1,2,3,...) = 0 (00), 1 (01), 3 (11), 2 (10), 6 (110), 7 (111), 5 (101), 4 (100), ...
 // consecutive indices differ in exactly one bit, which is precisely why adjacent K-map cells differ in a single variable.
 function gray(x: number) {
@@ -301,17 +333,32 @@ function implicantsToExpression(
         return isPOS ? "0" : "1";
       }
 
-      return isPOS ? `(${term.join(" + ")})` : term.join("\\,");
+      if (!isPOS) {
+        return term.join("\\,");
+      }
+      // a single-literal sum term needs no wrapping parentheses
+      return term.length === 1 ? term[0] : `(${term.join(" + ")})`;
     })
     .join(isPOS ? "\\," : " + ");
 }
 
 export default function computeExpression(
-  cells: CellState[][],
+  cells: CellState[][] | Table,
   isPOS: boolean,
 ): string {
-  const { minMaxTerms, dontcares } = gridToTerms(cells, isPOS);
+  let minMaxTerms: number[];
+  let dontcares: number[];
+  let numVars: number;
+
+  if (cells instanceof Table) {
+    ({ minMaxTerms, dontcares } = cells.toTerms(isPOS));
+    numVars = cells.numVars;
+  } else {
+    ({ minMaxTerms, dontcares } = gridToTerms(cells, isPOS));
+    numVars = Math.log2(cells.length * cells[0].length);
+  }
+
   const implicants = findPrimeImplicants({ minMaxTerms, dontcares });
   const essentialPrimeImplicants = selectCover(implicants, minMaxTerms);
-  return implicantsToExpression(essentialPrimeImplicants, 4, isPOS);
+  return implicantsToExpression(essentialPrimeImplicants, numVars, isPOS);
 }
