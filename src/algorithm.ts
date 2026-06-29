@@ -17,7 +17,7 @@ interface Terms {
 // 12 + 13 then combine to 110-
 // then 100- and 110- combine to 1-0-
 //
-class Implicant {
+export class Implicant {
   readonly ones: number; // binary representation of the 1s in the implicant
   readonly dashes: number; // binary representation of the cancelled bits in the implicant
   readonly terms: number[]; // original terms (min/max terms + dontcares) covered by the implicant
@@ -342,23 +342,34 @@ function implicantsToExpression(
     .join(isPOS ? "\\," : " + ");
 }
 
+function termsAndVars(
+  cells: CellState[][] | Table,
+  isPOS: boolean,
+): Terms & { numVars: number } {
+  if (cells instanceof Table) {
+    return { ...cells.toTerms(isPOS), numVars: cells.numVars };
+  }
+  return {
+    ...gridToTerms(cells, isPOS),
+    numVars: Math.log2(cells.length * cells[0].length),
+  };
+}
+
+// The minimal set of prime implicants (groups) chosen to cover the function.
+// For SOP these are groups of minterms; for POS, groups of maxterms.
+export function computeCover(
+  cells: CellState[][] | Table,
+  isPOS: boolean,
+): Implicant[] {
+  const { minMaxTerms, dontcares } = termsAndVars(cells, isPOS);
+  const implicants = findPrimeImplicants({ minMaxTerms, dontcares });
+  return selectCover(implicants, minMaxTerms);
+}
+
 export default function computeExpression(
   cells: CellState[][] | Table,
   isPOS: boolean,
 ): string {
-  let minMaxTerms: number[];
-  let dontcares: number[];
-  let numVars: number;
-
-  if (cells instanceof Table) {
-    ({ minMaxTerms, dontcares } = cells.toTerms(isPOS));
-    numVars = cells.numVars;
-  } else {
-    ({ minMaxTerms, dontcares } = gridToTerms(cells, isPOS));
-    numVars = Math.log2(cells.length * cells[0].length);
-  }
-
-  const implicants = findPrimeImplicants({ minMaxTerms, dontcares });
-  const essentialPrimeImplicants = selectCover(implicants, minMaxTerms);
-  return implicantsToExpression(essentialPrimeImplicants, numVars, isPOS);
+  const { numVars } = termsAndVars(cells, isPOS);
+  return implicantsToExpression(computeCover(cells, isPOS), numVars, isPOS);
 }
