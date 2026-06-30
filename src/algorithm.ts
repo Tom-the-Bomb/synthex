@@ -300,6 +300,7 @@ function selectCover(
   return primeImplicants.filter((_, i) => (min & (1n << BigInt(i))) !== 0n);
 }
 
+// convert a list of prime implicants to a string expression (SOP or POS) in LaTeX format
 function implicantsToExpression(
   implicants: Implicant[],
   numVars: number,
@@ -366,6 +367,7 @@ export function computeCover(
   return selectCover(implicants, minMaxTerms);
 }
 
+// convert a list of cells (or a Table) to a string expression (SOP or POS) in LaTeX format
 export default function computeExpression(
   cells: CellState[][] | Table,
   isPOS: boolean,

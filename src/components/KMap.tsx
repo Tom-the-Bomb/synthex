@@ -12,8 +12,26 @@ const HEADER = 34;
 const ORIGIN_X = CORNER + GAP;
 const ORIGIN_Y = HEADER + GAP;
 
-const SOP_COLORS = ["#2563eb", "#dc2626", "#9333ea", "#db2777", "#0891b2", "#15803d", "#4f46e5", "#e11d48"];
-const POS_COLORS = ["#f87171", "#38bdf8", "#34d399", "#c084fc", "#fb923c", "#f472b6", "#a3e635", "#22d3ee"];
+const SOP_COLORS = [
+  "#2563eb",
+  "#dc2626",
+  "#9333ea",
+  "#db2777",
+  "#0891b2",
+  "#15803d",
+  "#4f46e5",
+  "#e11d48",
+];
+const POS_COLORS = [
+  "#f87171",
+  "#38bdf8",
+  "#34d399",
+  "#c084fc",
+  "#fb923c",
+  "#f472b6",
+  "#a3e635",
+  "#22d3ee",
+];
 
 type Mode = "sop" | "pos" | "off";
 type View = "flat" | "3d";
@@ -85,7 +103,12 @@ function runs(indices: number[]): [number, number][] {
   return out;
 }
 
-function coveredCells(group: Implicant, rowCount: number, colCount: number, colBits: number) {
+function coveredCells(
+  group: Implicant,
+  rowCount: number,
+  colCount: number,
+  colBits: number,
+) {
   const onesLow = group.ones & (colCount - 1);
   const dashLow = group.dashes & (colCount - 1);
   const onesHigh = group.ones >> colBits;
@@ -154,8 +177,18 @@ export default function KMap({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.7rem] uppercase tracking-widest">
-        <Segmented label="Groups" value={mode} options={["sop", "pos", "off"]} onChange={setMode} />
-        <Segmented label="View" value={view} options={["flat", "3d"]} onChange={setView} />
+        <Segmented
+          label="Groups"
+          value={mode}
+          options={["sop", "pos", "off"]}
+          onChange={setMode}
+        />
+        <Segmented
+          label="View"
+          value={view}
+          options={["flat", "3d"]}
+          onChange={setView}
+        />
       </div>
 
       {view === "flat" && (
@@ -219,7 +252,9 @@ export default function KMap({
                   className={`flex flex-col items-center justify-center rounded-sm text-lg font-bold transition-colors ${cellClasses(outputs[term])}`}
                 >
                   <span className="leading-none">{outputs[term]}</span>
-                  <span className="text-[0.6rem] font-normal opacity-55">{term}</span>
+                  <span className="text-[0.6rem] font-normal opacity-55">
+                    {term}
+                  </span>
                 </button>
               );
             }),
@@ -248,7 +283,9 @@ export default function KMap({
       {view === "3d" && (
         <Suspense
           fallback={
-            <div className="text-[0.7rem] tracking-widest text-teal-500">loading 3D…</div>
+            <div className="text-[0.7rem] tracking-widest text-teal-500">
+              loading 3D…
+            </div>
           }
         >
           <KmapSurface

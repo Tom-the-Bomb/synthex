@@ -46,7 +46,9 @@ function TermSet({ symbol, terms }: { symbol: string; terms: number[] }) {
     return (
       <span className="whitespace-nowrap">
         <Tex tex={`${symbol}(${list(terms)})`} />
-        {terms.length > COLLAPSE_LIMIT && <Toggle open onClick={() => setOpen(false)} />}
+        {terms.length > COLLAPSE_LIMIT && (
+          <Toggle open onClick={() => setOpen(false)} />
+        )}
       </span>
     );
   }

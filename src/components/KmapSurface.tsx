@@ -75,7 +75,9 @@ function Cell({
   const point = surface.point(cell.centerU, cell.centerV);
   const normal = surface.normal(cell.centerU, cell.centerV).normalize();
   const reference =
-    Math.abs(normal.y) > 0.9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
+    Math.abs(normal.y) > 0.9
+      ? new THREE.Vector3(0, 0, 1)
+      : new THREE.Vector3(0, 1, 0);
   const right = new THREE.Vector3().crossVectors(reference, normal).normalize();
   const up = new THREE.Vector3().crossVectors(normal, right).normalize();
   const orientation = new THREE.Quaternion().setFromRotationMatrix(
@@ -97,7 +99,10 @@ function Cell({
         }}
         onPointerOver={(e) => {
           e.stopPropagation();
-          onHover({ term: cell.term, pos: point.clone().addScaledVector(normal, 0.18) });
+          onHover({
+            term: cell.term,
+            pos: point.clone().addScaledVector(normal, 0.18),
+          });
           document.body.style.cursor = "pointer";
         }}
         onPointerOut={() => {
@@ -144,7 +149,9 @@ export default function KmapSurface({
   const [hover, setHover] = useState<Hover>(null);
 
   const spec = surfaceSpec(numVars);
-  const surfaces = Array.from({ length: spec.halves }, (_, half) => makeSurface(spec, half));
+  const surfaces = Array.from({ length: spec.halves }, (_, half) =>
+    makeSurface(spec, half),
+  );
   const cells = cellLayouts(spec);
   const bands = bandLayouts(groups, spec);
   const seg = spec.topology === "flat" ? 1 : 8;
@@ -178,7 +185,11 @@ export default function KmapSurface({
         <Canvas camera={{ position: [5, 3.6, 7.5], fov: 45 }} dpr={[1, 2]}>
           <ambientLight intensity={0.95} />
           <directionalLight position={[5, 8, 6]} intensity={1.1} />
-          <directionalLight position={[-6, -3, -5]} intensity={0.4} color="#7cf" />
+          <directionalLight
+            position={[-6, -3, -5]}
+            intensity={0.4}
+            color="#7cf"
+          />
 
           {surfaces.map((surface, half) => (
             <Patch
@@ -245,10 +256,17 @@ export default function KmapSurface({
           ))}
 
           {hover && (
-            <Html position={hover.pos} center distanceFactor={9} zIndexRange={[100, 0]}>
+            <Html
+              position={hover.pos}
+              center
+              distanceFactor={9}
+              zIndexRange={[100, 0]}
+            >
               <div className="pointer-events-none whitespace-nowrap rounded-sm border border-teal-600/60 bg-[#0a1722]/95 px-2 py-1 text-[0.7rem] text-teal-100">
                 <span className="font-bold text-amber-300">m{hover.term}</span>
-                <span className="ml-2 text-teal-400">{termAssignment(hover.term, numVars)}</span>
+                <span className="ml-2 text-teal-400">
+                  {termAssignment(hover.term, numVars)}
+                </span>
               </div>
             </Html>
           )}
