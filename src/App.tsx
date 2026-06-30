@@ -103,7 +103,6 @@ function App() {
           <div className="flex border border-teal-800/60 bg-[#0b1c28]/70">
             <Field label="Vars" value={String(numVars)} />
             <Field label="Rows" value={String(1 << numVars)} />
-            <Field label="K-Map" value={hasKMap ? "ACTIVE" : "N/A"} />
           </div>
         </header>
 
