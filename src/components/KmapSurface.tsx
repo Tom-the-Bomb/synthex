@@ -35,6 +35,8 @@ function Patch({
   v0,
   v1,
   seg,
+  segU = seg,
+  segV = seg,
   offset = 0,
   children,
   ...mesh
@@ -45,10 +47,12 @@ function Patch({
   v0: number;
   v1: number;
   seg: number;
+  segU?: number;
+  segV?: number;
   offset?: number;
   children: ReactNode;
 } & React.ComponentProps<"mesh">) {
-  const geometry = buildPatch(surface, u0, u1, v0, v1, seg, seg, offset);
+  const geometry = buildPatch(surface, u0, u1, v0, v1, segU, segV, offset);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <mesh geometry={geometry} {...mesh}>
@@ -232,6 +236,8 @@ export default function KmapSurface({
               v0={band.v0}
               v1={band.v1}
               seg={seg}
+              segU={seg * Math.max(1, Math.round((band.u1 - band.u0) * spec.cols))}
+              segV={seg * Math.max(1, Math.round((band.v1 - band.v0) * spec.rows))}
               offset={0.04 + (band.groupIndex % 6) * 0.02}
             >
               <meshBasicMaterial
