@@ -4,7 +4,15 @@ import computeExpression, { Table } from "../algorithm";
 import type { CellState } from "../cellState";
 import "katex/dist/katex.min.css";
 
-function Math({ tex }: { tex: string }) {
+const AMBER = "bg-amber-400/20 text-amber-200";
+const SKY = "bg-sky-400/15 text-sky-200";
+
+const COLLAPSE_LIMIT = 16;
+const EDGE = 6;
+
+const list = (terms: number[]) => terms.join(",\\,");
+
+function Tex({ tex }: { tex: string }) {
   return (
     <span
       className="text-lg"
@@ -14,12 +22,6 @@ function Math({ tex }: { tex: string }) {
     />
   );
 }
-
-const join = (terms: number[]) => terms.join(",\\,");
-
-// How many terms before the list collapses, and how many to keep on each end.
-const COLLAPSE_LIMIT = 16;
-const EDGE = 6;
 
 function Toggle({ open, onClick }: { open: boolean; onClick: () => void }) {
   return (
@@ -33,36 +35,32 @@ function Toggle({ open, onClick }: { open: boolean; onClick: () => void }) {
   );
 }
 
-// Renders `<sym>(t0, t1, …)`. When the list is long it collapses to head/tail
-// with a `[…]` toggle in the middle.
-function TermMath({ sym, terms }: { sym: string; terms: number[] }) {
+function TermSet({ symbol, terms }: { symbol: string; terms: number[] }) {
   const [open, setOpen] = useState(false);
 
-  if (terms.length === 0) return <Math tex={`${sym}(\\,)`} />;
+  if (terms.length === 0) {
+    return <Tex tex={`${symbol}(\\,)`} />;
+  }
 
   if (open || terms.length <= COLLAPSE_LIMIT) {
     return (
       <span className="whitespace-nowrap">
-        <Math tex={`${sym}(${join(terms)})`} />
-        {terms.length > COLLAPSE_LIMIT && (
-          <Toggle open onClick={() => setOpen(false)} />
-        )}
+        <Tex tex={`${symbol}(${list(terms)})`} />
+        {terms.length > COLLAPSE_LIMIT && <Toggle open onClick={() => setOpen(false)} />}
       </span>
     );
   }
 
-  const head = terms.slice(0, EDGE);
-  const tail = terms.slice(-EDGE);
   return (
     <span className="whitespace-nowrap">
-      <Math tex={`${sym}(${join(head)},\\,`} />
+      <Tex tex={`${symbol}(${list(terms.slice(0, EDGE))},\\,`} />
       <Toggle open={false} onClick={() => setOpen(true)} />
-      <Math tex={`\\,${join(tail)})`} />
+      <Tex tex={`\\,${list(terms.slice(-EDGE))})`} />
     </span>
   );
 }
 
-function Line({
+function Row({
   tag,
   tagClass,
   children,
@@ -83,54 +81,51 @@ function Line({
   );
 }
 
-const AMBER = "bg-amber-400/20 text-amber-200";
-const SKY = "bg-sky-400/15 text-sky-200";
-
 export default function Output({ outputs }: { outputs: CellState[] }) {
   const table = new Table(
     outputs.map((_, i) => i),
     outputs,
   );
-  const sop = computeExpression(table, false);
-  const pos = computeExpression(table, true);
-  const { minterms, maxterms, dontcares } = table;
-  const hasDc = dontcares.length > 0;
+  const ones = table.minterms;
+  const zeros = table.maxterms;
+  const dashes = table.dontcares;
+  const hasDontCares = dashes.length > 0;
 
   return (
     <div className="flex flex-col gap-3 text-teal-100">
-      <Line tag="Min" tagClass={AMBER}>
+      <Row tag="Min" tagClass={AMBER}>
         <span className="whitespace-nowrap">
-          <Math tex="f = \textstyle\sum" />
-          <TermMath sym="\,m" terms={minterms} />
-          {hasDc && (
+          <Tex tex="f = \textstyle\sum" />
+          <TermSet symbol="\,m" terms={ones} />
+          {hasDontCares && (
             <>
-              <Math tex="+ \textstyle\sum" />
-              <TermMath sym="\,d" terms={dontcares} />
+              <Tex tex="+ \textstyle\sum" />
+              <TermSet symbol="\,d" terms={dashes} />
             </>
           )}
         </span>
-      </Line>
+      </Row>
 
-      <Line tag="Max" tagClass={SKY}>
+      <Row tag="Max" tagClass={SKY}>
         <span className="whitespace-nowrap">
-          <Math tex="f = \textstyle\prod" />
-          <TermMath sym="\,M" terms={maxterms} />
-          {hasDc && (
+          <Tex tex="f = \textstyle\prod" />
+          <TermSet symbol="\,M" terms={zeros} />
+          {hasDontCares && (
             <>
-              <Math tex="\cdot \textstyle\prod" />
-              <TermMath sym="\,d" terms={dontcares} />
+              <Tex tex="\cdot \textstyle\prod" />
+              <TermSet symbol="\,d" terms={dashes} />
             </>
           )}
         </span>
-      </Line>
+      </Row>
 
       <div className="mt-1 flex flex-col gap-3 border-t border-dashed border-teal-800/60 pt-3">
-        <Line tag="SOP" tagClass={AMBER}>
-          <Math tex={`f = ${sop}`} />
-        </Line>
-        <Line tag="POS" tagClass={SKY}>
-          <Math tex={`f = ${pos}`} />
-        </Line>
+        <Row tag="SOP" tagClass={AMBER}>
+          <Tex tex={`f = ${computeExpression(table, false)}`} />
+        </Row>
+        <Row tag="POS" tagClass={SKY}>
+          <Tex tex={`f = ${computeExpression(table, true)}`} />
+        </Row>
       </div>
     </div>
   );

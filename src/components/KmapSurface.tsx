@@ -15,10 +15,12 @@ import {
   type CellLayout,
 } from "../surface";
 
+type Hover = { term: number; pos: THREE.Vector3 } | null;
+
 const FILL: Record<CellState, string> = {
-  "1": "#f3b720", // minterm
-  "0": "#143247", // maxterm
-  x: "#27505d", // don't-care
+  "1": "#f3b720",
+  "0": "#143247",
+  x: "#27505d",
 };
 const EMISSIVE: Record<CellState, string> = {
   "1": "#3a2900",
@@ -26,8 +28,6 @@ const EMISSIVE: Record<CellState, string> = {
   x: "#08191f",
 };
 
-// Subdivided patch over a (u,v) rectangle, disposed when replaced or unmounted.
-// The compiler keeps `geom` stable while the bounds are unchanged.
 function Patch({
   surface,
   u0,
@@ -48,10 +48,10 @@ function Patch({
   offset?: number;
   children: ReactNode;
 } & React.ComponentProps<"mesh">) {
-  const geom = buildPatch(surface, u0, u1, v0, v1, seg, seg, offset);
-  useEffect(() => () => geom.dispose(), [geom]);
+  const geometry = buildPatch(surface, u0, u1, v0, v1, seg, seg, offset);
+  useEffect(() => () => geometry.dispose(), [geometry]);
   return (
-    <mesh geometry={geom} {...mesh}>
+    <mesh geometry={geometry} {...mesh}>
       {children}
     </mesh>
   );
@@ -70,21 +70,17 @@ function Cell({
   state: CellState;
   seg: number;
   onToggle: (term: number) => void;
-  onHover: (h: { term: number; pos: THREE.Vector3 } | null) => void;
+  onHover: (hover: Hover) => void;
 }) {
-  // Lay the digit flat on the surface (tangent plane), facing outward, kept as
-  // upright as world-up allows — so it reads as printed on the shape.
-  const p = surface.point(cell.cu, cell.cv);
-  const n = surface.normal(cell.cu, cell.cv).normalize();
-  const ref =
-    Math.abs(n.y) > 0.9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
-  const right = new THREE.Vector3().crossVectors(ref, n).normalize();
-  const up = new THREE.Vector3().crossVectors(n, right).normalize();
-  const quat = new THREE.Quaternion().setFromRotationMatrix(
-    new THREE.Matrix4().makeBasis(right, up, n),
+  const point = surface.point(cell.centerU, cell.centerV);
+  const normal = surface.normal(cell.centerU, cell.centerV).normalize();
+  const reference =
+    Math.abs(normal.y) > 0.9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(reference, normal).normalize();
+  const up = new THREE.Vector3().crossVectors(normal, right).normalize();
+  const orientation = new THREE.Quaternion().setFromRotationMatrix(
+    new THREE.Matrix4().makeBasis(right, up, normal),
   );
-  const pos = p.clone().addScaledVector(n, 0.025);
-  const hoverPos = p.clone().addScaledVector(n, 0.18);
 
   return (
     <>
@@ -101,7 +97,7 @@ function Cell({
         }}
         onPointerOver={(e) => {
           e.stopPropagation();
-          onHover({ term: cell.term, pos: hoverPos });
+          onHover({ term: cell.term, pos: point.clone().addScaledVector(normal, 0.18) });
           document.body.style.cursor = "pointer";
         }}
         onPointerOut={() => {
@@ -118,8 +114,8 @@ function Cell({
         />
       </Patch>
       <Text
-        position={pos}
-        quaternion={quat}
+        position={point.clone().addScaledVector(normal, 0.025)}
+        quaternion={orientation}
         fontSize={0.34}
         color={state === "1" ? "#3a2600" : "#cdeee6"}
         anchorX="center"
@@ -145,45 +141,37 @@ export default function KmapSurface({
   groups: Implicant[];
   palette: string[];
 }) {
-  // Overlay visibility follows the panel's SOP/POS/off switch (passed in via
-  // `groups`); the 3D view adds no controls of its own beyond the legend.
-  const [hover, setHover] = useState<{ term: number; pos: THREE.Vector3 } | null>(
-    null,
-  );
+  const [hover, setHover] = useState<Hover>(null);
 
   const spec = surfaceSpec(numVars);
-  const surfaces = Array.from({ length: spec.halves }, (_, h) =>
-    makeSurface(spec, h),
-  );
+  const surfaces = Array.from({ length: spec.halves }, (_, half) => makeSurface(spec, half));
   const cells = cellLayouts(spec);
   const bands = bandLayouts(groups, spec);
   const seg = spec.topology === "flat" ? 1 : 8;
 
-  // E-adjacency links between the two tori (5 var): one per (row, col).
   const links =
     spec.halves !== 2
       ? []
       : cells
-          .filter((c) => c.half === 0)
-          .map((c) => ({
-            a: surfaces[0].point(c.cu, c.cv),
-            b: surfaces[1].point(c.cu, c.cv),
-            key: `${c.row}-${c.col}`,
+          .filter((cell) => cell.half === 0)
+          .map((cell) => ({
+            key: `${cell.row}-${cell.col}`,
+            start: surfaces[0].point(cell.centerU, cell.centerV),
+            end: surfaces[1].point(cell.centerU, cell.centerV),
           }));
 
   return (
     <div className="flex w-full flex-col gap-2">
-      {/* value legend (the only 3D-view control) */}
       <div className="flex items-center gap-3 text-[0.7rem] uppercase tracking-widest text-teal-400">
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-3 w-3 rounded-xs bg-[#f3b720]" />1
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-3 w-3 rounded-xs bg-[#143247]" />0
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-3 w-3 rounded-xs bg-[#27505d]" />x
-        </span>
+        {(["1", "0", "x"] as CellState[]).map((state) => (
+          <span key={state} className="flex items-center gap-1">
+            <span
+              className="inline-block h-3 w-3 rounded-xs"
+              style={{ backgroundColor: FILL[state] }}
+            />
+            {state}
+          </span>
+        ))}
       </div>
 
       <div className="h-110 w-full overflow-hidden rounded-md border border-teal-800/50 bg-[#0a1722]">
@@ -192,10 +180,9 @@ export default function KmapSurface({
           <directionalLight position={[5, 8, 6]} intensity={1.1} />
           <directionalLight position={[-6, -3, -5]} intensity={0.4} color="#7cf" />
 
-          {/* solid body, slightly recessed so the cells read as tiles on it */}
-          {surfaces.map((surface, h) => (
+          {surfaces.map((surface, half) => (
             <Patch
-              key={`base-${h}`}
+              key={`base-${half}`}
               surface={surface}
               u0={0}
               u1={1}
@@ -225,19 +212,19 @@ export default function KmapSurface({
             />
           ))}
 
-          {bands.map((b, i) => (
+          {bands.map((band, i) => (
             <Patch
-              key={`band-${b.groupIndex}-${b.half}-${i}`}
-              surface={surfaces[b.half]}
-              u0={b.u0}
-              u1={b.u1}
-              v0={b.v0}
-              v1={b.v1}
+              key={`band-${band.groupIndex}-${band.half}-${i}`}
+              surface={surfaces[band.half]}
+              u0={band.u0}
+              u1={band.u1}
+              v0={band.v0}
+              v1={band.v1}
               seg={seg}
-              offset={0.04 + (b.groupIndex % 6) * 0.02}
+              offset={0.04 + (band.groupIndex % 6) * 0.02}
             >
               <meshBasicMaterial
-                color={palette[b.groupIndex % palette.length]}
+                color={palette[band.groupIndex % palette.length]}
                 transparent
                 opacity={0.34}
                 side={THREE.DoubleSide}
@@ -246,10 +233,10 @@ export default function KmapSurface({
             </Patch>
           ))}
 
-          {links.map((l) => (
+          {links.map((link) => (
             <Line
-              key={l.key}
-              points={[l.a.toArray(), l.b.toArray()]}
+              key={link.key}
+              points={[link.start.toArray(), link.end.toArray()]}
               color="#5eead4"
               lineWidth={1}
               transparent
@@ -261,9 +248,7 @@ export default function KmapSurface({
             <Html position={hover.pos} center distanceFactor={9} zIndexRange={[100, 0]}>
               <div className="pointer-events-none whitespace-nowrap rounded-sm border border-teal-600/60 bg-[#0a1722]/95 px-2 py-1 text-[0.7rem] text-teal-100">
                 <span className="font-bold text-amber-300">m{hover.term}</span>
-                <span className="ml-2 text-teal-400">
-                  {termAssignment(hover.term, numVars)}
-                </span>
+                <span className="ml-2 text-teal-400">{termAssignment(hover.term, numVars)}</span>
               </div>
             </Html>
           )}

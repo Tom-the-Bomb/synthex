@@ -1,12 +1,3 @@
-// Geometry helpers for the 3D K-map visualizer.
-//
-// Each surface is parametrised by (u, v) in [0, 1): u runs around the
-// columns (Gray-coded), v around the rows. A cell of n variables is a small
-// subdivided patch over its (u, v) range, so it curves with the surface and
-// 1-bit-apart cells end up physically adjacent — including the edge/corner
-// wraps a flat grid hides.
-//
-// Variable convention matches algorithm.ts: bit k is x_{k+1} (x_1 = LSB).
 import * as THREE from "three";
 import { gray } from "./kmap";
 import type { Implicant } from "./algorithm";
@@ -15,14 +6,13 @@ export type Topology = "flat" | "cylinder" | "torus" | "twoTorus";
 
 export interface SurfaceSpec {
   topology: Topology;
-  cols: number; // u divisions (Gray columns)
-  rows: number; // v divisions (Gray rows)
-  halves: number; // 1, or 2 when the 5th variable E splits into two tori
+  cols: number;
+  rows: number;
+  halves: number;
   colBits: number;
   rowBits: number;
 }
 
-// Topology per variable count (see the task's topology table).
 export function surfaceSpec(numVars: number): SurfaceSpec {
   switch (numVars) {
     case 1:
@@ -31,8 +21,6 @@ export function surfaceSpec(numVars: number): SurfaceSpec {
       return { topology: "flat", cols: 2, rows: 2, halves: 1, colBits: 1, rowBits: 1 };
     case 3:
       return { topology: "cylinder", cols: 4, rows: 2, halves: 1, colBits: 2, rowBits: 1 };
-    case 4:
-      return { topology: "torus", cols: 4, rows: 4, halves: 1, colBits: 2, rowBits: 2 };
     case 5:
       return { topology: "twoTorus", cols: 4, rows: 4, halves: 2, colBits: 2, rowBits: 2 };
     default:
@@ -40,39 +28,33 @@ export function surfaceSpec(numVars: number): SurfaceSpec {
   }
 }
 
-// Minterm index of the cell at (half, row, col). The Gray-coded row/col give the
-// low/mid bits; the half (E) is the top bit. Matches cellTerm() for n <= 4.
 export function surfaceTerm(
   spec: SurfaceSpec,
   half: number,
   row: number,
   col: number,
 ): number {
-  const ebit = spec.colBits + spec.rowBits;
-  return (half << ebit) | (gray(row) << spec.colBits) | gray(col);
+  const eBit = spec.colBits + spec.rowBits;
+  return (half << eBit) | (gray(row) << spec.colBits) | gray(col);
 }
 
-// Full variable assignment of a term, MSB first: "x3=1 x2=0 x1=1".
 export function termAssignment(term: number, numVars: number): string {
   const parts = [];
   for (let k = numVars; k >= 1; k--) parts.push(`x${k}=${(term >> (k - 1)) & 1}`);
   return parts.join("  ");
 }
 
-// ---------------------------------------------------------------------------
-// Parametric surfaces. Each exposes point(u,v) and the outward normal(u,v).
-// ---------------------------------------------------------------------------
 export interface Surface {
   point(u: number, v: number): THREE.Vector3;
   normal(u: number, v: number): THREE.Vector3;
 }
 
-const TORUS_R = 2.4; // major radius
+const TORUS_RADIUS = 2.4;
 const TORUS_TUBE = 0.95;
-const TORUS_GAP = 1.55; // vertical separation of the two 5-var tori
-const CYL_R = 1.75;
-const CYL_H = 2.5;
-const FLAT_CELL = 1.25; // world size of a flat cell
+const TORUS_GAP = 1.55;
+const CYLINDER_RADIUS = 1.75;
+const CYLINDER_HEIGHT = 2.5;
+const FLAT_CELL = 1.25;
 
 export function makeSurface(spec: SurfaceSpec, half: number): Surface {
   switch (spec.topology) {
@@ -81,49 +63,47 @@ export function makeSurface(spec: SurfaceSpec, half: number): Surface {
       const yShift = spec.halves === 2 ? (half === 0 ? -TORUS_GAP : TORUS_GAP) : 0;
       return {
         point(u, v) {
-          const th = 2 * Math.PI * u;
-          const ph = 2 * Math.PI * v;
-          const ring = TORUS_R + TORUS_TUBE * Math.cos(ph);
+          const theta = 2 * Math.PI * u;
+          const phi = 2 * Math.PI * v;
+          const ring = TORUS_RADIUS + TORUS_TUBE * Math.cos(phi);
           return new THREE.Vector3(
-            ring * Math.cos(th),
-            TORUS_TUBE * Math.sin(ph) + yShift,
-            ring * Math.sin(th),
+            ring * Math.cos(theta),
+            TORUS_TUBE * Math.sin(phi) + yShift,
+            ring * Math.sin(theta),
           );
         },
         normal(u, v) {
-          const th = 2 * Math.PI * u;
-          const ph = 2 * Math.PI * v;
+          const theta = 2 * Math.PI * u;
+          const phi = 2 * Math.PI * v;
           return new THREE.Vector3(
-            Math.cos(ph) * Math.cos(th),
-            Math.sin(ph),
-            Math.cos(ph) * Math.sin(th),
+            Math.cos(phi) * Math.cos(theta),
+            Math.sin(phi),
+            Math.cos(phi) * Math.sin(theta),
           ).normalize();
         },
       };
     }
-    case "cylinder": {
+    case "cylinder":
       return {
         point(u, v) {
-          const th = 2 * Math.PI * u;
+          const theta = 2 * Math.PI * u;
           return new THREE.Vector3(
-            CYL_R * Math.cos(th),
-            (v - 0.5) * CYL_H,
-            CYL_R * Math.sin(th),
+            CYLINDER_RADIUS * Math.cos(theta),
+            (v - 0.5) * CYLINDER_HEIGHT,
+            CYLINDER_RADIUS * Math.sin(theta),
           );
         },
         normal(u) {
-          const th = 2 * Math.PI * u;
-          return new THREE.Vector3(Math.cos(th), 0, Math.sin(th));
+          const theta = 2 * Math.PI * u;
+          return new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta));
         },
       };
-    }
     default: {
-      // flat plane in the z = 0 surface, centred at the origin
-      const w = spec.cols * FLAT_CELL;
-      const h = spec.rows * FLAT_CELL;
+      const width = spec.cols * FLAT_CELL;
+      const height = spec.rows * FLAT_CELL;
       return {
         point(u, v) {
-          return new THREE.Vector3(u * w - w / 2, v * h - h / 2, 0);
+          return new THREE.Vector3(u * width - width / 2, v * height - height / 2, 0);
         },
         normal() {
           return new THREE.Vector3(0, 0, 1);
@@ -133,9 +113,6 @@ export function makeSurface(spec: SurfaceSpec, half: number): Surface {
   }
 }
 
-// A subdivided patch over the (u,v) rectangle, pushed out along the normal by
-// `offset`. u/v may exceed 1 — the periodic surfaces wrap automatically, which
-// is what keeps a wrapped group a single contiguous patch.
 export function buildPatch(
   surface: Surface,
   u0: number,
@@ -153,9 +130,11 @@ export function buildPatch(
     for (let i = 0; i <= segU; i++) {
       const u = u0 + (u1 - u0) * (i / segU);
       const v = v0 + (v1 - v0) * (j / segV);
-      const p = surface.point(u, v);
-      if (offset !== 0) p.addScaledVector(surface.normal(u, v), offset);
-      positions.push(p.x, p.y, p.z);
+      const point = surface.point(u, v);
+      if (offset !== 0) {
+        point.addScaledVector(surface.normal(u, v), offset);
+      }
+      positions.push(point.x, point.y, point.z);
     }
   }
 
@@ -170,32 +149,23 @@ export function buildPatch(
     }
   }
 
-  const geom = new THREE.BufferGeometry();
-  geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geom.setIndex(indices);
-  geom.computeVertexNormals();
-  return geom;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
-// One contiguous cyclic block: covered indices form a run that may wrap past
-// the edge, so the run start is the element whose predecessor is missing.
+// A covered set wraps past the edge, so the run starts at the element whose
+// predecessor is missing.
 function cyclicRun(set: number[], n: number): { start: number; len: number } {
   if (set.length === n) return { start: 0, len: n };
-  const has = new Set(set);
-  let start = set[0];
-  for (const x of set) {
-    if (!has.has((x - 1 + n) % n)) {
-      start = x;
-      break;
-    }
-  }
+  const present = new Set(set);
+  const start = set.find((x) => !present.has((x - 1 + n) % n))!;
   return { start, len: set.length };
 }
 
-// ---------------------------------------------------------------------------
-// Cell + group layouts in (u,v) space (with small gaps baked in).
-// ---------------------------------------------------------------------------
-const CELL_GAP_U = 0.05; // fraction of a cell left as a seam
+const CELL_GAP_U = 0.05;
 const CELL_GAP_V = 0.06;
 const BAND_GAP = 0.02;
 
@@ -208,36 +178,36 @@ export interface CellLayout {
   u1: number;
   v0: number;
   v1: number;
-  cu: number; // centre
-  cv: number;
+  centerU: number;
+  centerV: number;
 }
 
 export function cellLayouts(spec: SurfaceSpec): CellLayout[] {
   const du = 1 / spec.cols;
   const dv = 1 / spec.rows;
-  const gu = du * CELL_GAP_U;
-  const gv = dv * CELL_GAP_V;
-  const out: CellLayout[] = [];
+  const gapU = du * CELL_GAP_U;
+  const gapV = dv * CELL_GAP_V;
+  const cells: CellLayout[] = [];
 
   for (let half = 0; half < spec.halves; half++) {
     for (let row = 0; row < spec.rows; row++) {
       for (let col = 0; col < spec.cols; col++) {
-        out.push({
+        cells.push({
           half,
           row,
           col,
           term: surfaceTerm(spec, half, row, col),
-          u0: col * du + gu,
-          u1: (col + 1) * du - gu,
-          v0: row * dv + gv,
-          v1: (row + 1) * dv - gv,
-          cu: (col + 0.5) * du,
-          cv: (row + 0.5) * dv,
+          u0: col * du + gapU,
+          u1: (col + 1) * du - gapU,
+          v0: row * dv + gapV,
+          v1: (row + 1) * dv - gapV,
+          centerU: (col + 0.5) * du,
+          centerV: (row + 0.5) * dv,
         });
       }
     }
   }
-  return out;
+  return cells;
 }
 
 export interface BandLayout {
@@ -249,53 +219,53 @@ export interface BandLayout {
   v1: number;
 }
 
-// Each prime implicant covers a Cartesian block of rows x cols (independent of
-// the E half). cyclicRun unwraps it into one (possibly edge-crossing) range, so
-// on the wrapped surface the band is a single contiguous patch.
-export function bandLayouts(
-  groups: Implicant[],
-  spec: SurfaceSpec,
-): BandLayout[] {
+export function bandLayouts(groups: Implicant[], spec: SurfaceSpec): BandLayout[] {
   const { cols, rows, colBits, rowBits } = spec;
   const du = 1 / cols;
   const dv = 1 / rows;
-  const ebit = colBits + rowBits;
+  const eBit = colBits + rowBits;
   const lowMask = cols - 1;
   const midMask = (rows - 1) << colBits;
-  const out: BandLayout[] = [];
+  const bands: BandLayout[] = [];
 
-  groups.forEach((g, gi) => {
-    const onesLow = g.ones & lowMask;
-    const dashLow = g.dashes & lowMask;
-    const onesMid = (g.ones & midMask) >> colBits;
-    const dashMid = (g.dashes & midMask) >> colBits;
+  groups.forEach((group, groupIndex) => {
+    const onesLow = group.ones & lowMask;
+    const dashLow = group.dashes & lowMask;
+    const onesMid = (group.ones & midMask) >> colBits;
+    const dashMid = (group.dashes & midMask) >> colBits;
 
-    const C: number[] = [];
-    for (let c = 0; c < cols; c++)
-      if ((gray(c) & ~dashLow & lowMask) === onesLow) C.push(c);
-    const R: number[] = [];
-    for (let r = 0; r < rows; r++)
-      if ((gray(r) & ~dashMid & (rows - 1)) === onesMid) R.push(r);
+    const coveredCols: number[] = [];
+    for (let col = 0; col < cols; col++) {
+      if ((gray(col) & ~dashLow & lowMask) === onesLow) {
+        coveredCols.push(col);
+      }
+    }
+    const coveredRows: number[] = [];
+    for (let row = 0; row < rows; row++) {
+      if ((gray(row) & ~dashMid & (rows - 1)) === onesMid) {
+        coveredRows.push(row);
+      }
+    }
 
-    const eOnes = (g.ones >> ebit) & 1;
-    const eDash = (g.dashes >> ebit) & 1;
+    const eOnes = (group.ones >> eBit) & 1;
+    const eDash = (group.dashes >> eBit) & 1;
     const halves =
       spec.halves === 1 ? [0] : [0, 1].filter((h) => eDash === 1 || h === eOnes);
 
-    const cr = cyclicRun(C, cols);
-    const rr = cyclicRun(R, rows);
+    const colRun = cyclicRun(coveredCols, cols);
+    const rowRun = cyclicRun(coveredRows, rows);
 
     for (const half of halves) {
-      out.push({
-        groupIndex: gi,
+      bands.push({
+        groupIndex,
         half,
-        u0: cr.start * du + du * BAND_GAP,
-        u1: (cr.start + cr.len) * du - du * BAND_GAP,
-        v0: rr.start * dv + dv * BAND_GAP,
-        v1: (rr.start + rr.len) * dv - dv * BAND_GAP,
+        u0: colRun.start * du + du * BAND_GAP,
+        u1: (colRun.start + colRun.len) * du - du * BAND_GAP,
+        v0: rowRun.start * dv + dv * BAND_GAP,
+        v1: (rowRun.start + rowRun.len) * dv - dv * BAND_GAP,
       });
     }
   });
 
-  return out;
+  return bands;
 }

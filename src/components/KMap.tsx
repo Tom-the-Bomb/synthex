@@ -3,45 +3,61 @@ import { CellState, cellClasses } from "../cellState";
 import { Table, computeCover, type Implicant } from "../algorithm";
 import { bin, cellTerm, gray, kmapDims } from "../kmap";
 
-// three.js / r3f are heavy; only load the 3D surface when it is opened.
 const KmapSurface = lazy(() => import("./KmapSurface"));
 
-const CELL = 46; // cell size (px)
-const GAP = 6; // gap between cells (px)
-const CORNER = 54; // corner / row-header column width (px)
-const HEADER = 34; // column-header row height (px)
-
-// Top-left pixel offset of the first cell (after the corner track + gap).
+const CELL = 46;
+const GAP = 6;
+const CORNER = 54;
+const HEADER = 34;
 const ORIGIN_X = CORNER + GAP;
 const ORIGIN_Y = HEADER + GAP;
 
-// Group loop palettes. SOP groups sit on the light amber minterm cells, so
-// they use deeper, saturated hues (no yellow/orange). POS groups sit on the
-// dark maxterm cells, where brighter hues read better.
-const SOP_COLORS = [
-  "#2563eb", // blue
-  "#dc2626", // red
-  "#9333ea", // violet
-  "#db2777", // pink
-  "#0891b2", // cyan
-  "#15803d", // green
-  "#4f46e5", // indigo
-  "#e11d48", // rose
-];
-const POS_COLORS = [
-  "#f87171", // red
-  "#38bdf8", // sky
-  "#34d399", // emerald
-  "#c084fc", // purple
-  "#fb923c", // orange
-  "#f472b6", // pink
-  "#a3e635", // lime
-  "#22d3ee", // cyan
-];
+const SOP_COLORS = ["#2563eb", "#dc2626", "#9333ea", "#db2777", "#0891b2", "#15803d", "#4f46e5", "#e11d48"];
+const POS_COLORS = ["#f87171", "#38bdf8", "#34d399", "#c084fc", "#fb923c", "#f472b6", "#a3e635", "#22d3ee"];
 
 type Mode = "sop" | "pos" | "off";
+type View = "flat" | "3d";
 
-// Variable labels for a contiguous bit range, most-significant first.
+interface Loop {
+  key: string;
+  color: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: readonly T[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="mr-1 text-teal-500">{label}</span>
+      {options.map((option) => (
+        <button
+          key={option}
+          onClick={() => onChange(option)}
+          className={`rounded-sm border px-2 py-0.5 font-bold transition-colors ${
+            value === option
+              ? "border-amber-400/60 bg-amber-400/20 text-amber-200"
+              : "border-teal-800/60 text-teal-400 hover:bg-teal-400/10"
+          }`}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function VarLabels({ hi, lo }: { hi: number; lo: number }) {
   const vars = [];
   for (let v = hi; v >= lo; v--) vars.push(v);
@@ -56,78 +72,62 @@ function VarLabels({ hi, lo }: { hi: number; lo: number }) {
   );
 }
 
-// Contiguous runs of consecutive integers in an ascending list.
-function runs(idx: number[]): [number, number][] {
+function runs(indices: number[]): [number, number][] {
   const out: [number, number][] = [];
-  for (const i of idx) {
+  for (const i of indices) {
     const last = out[out.length - 1];
-    if (last && i === last[1] + 1) last[1] = i;
-    else out.push([i, i]);
+    if (last && i === last[1] + 1) {
+      last[1] = i;
+    } else {
+      out.push([i, i]);
+    }
   }
   return out;
 }
 
-interface Loop {
-  key: string;
-  color: string;
-  left: number;
-  top: number;
-  width: number;
-  height: number;
+function coveredCells(group: Implicant, rowCount: number, colCount: number, colBits: number) {
+  const onesLow = group.ones & (colCount - 1);
+  const dashLow = group.dashes & (colCount - 1);
+  const onesHigh = group.ones >> colBits;
+  const dashHigh = group.dashes >> colBits;
+
+  const rows: number[] = [];
+  for (let r = 0; r < rowCount; r++) {
+    if ((gray(r) & ~dashHigh) === onesHigh) {
+      rows.push(r);
+    }
+  }
+  const cols: number[] = [];
+  for (let c = 0; c < colCount; c++) {
+    if ((gray(c) & ~dashLow) === onesLow) {
+      cols.push(c);
+    }
+  }
+  return { rows, cols };
 }
 
-// Each prime implicant covers a Cartesian block R x C of grid cells: the row
-// gray code fixes the high bits, the column gray code the low bits.
-function coveredRC(
-  g: Implicant,
-  rows: number,
-  cols: number,
-  colBits: number,
-): { R: number[]; C: number[] } {
-  const onesLow = g.ones & (cols - 1);
-  const dashLow = g.dashes & (cols - 1);
-  const onesHigh = g.ones >> colBits;
-  const dashHigh = g.dashes >> colBits;
-
-  const R = [];
-  for (let r = 0; r < rows; r++)
-    if ((gray(r) & ~dashHigh) === onesHigh) R.push(r);
-  const C = [];
-  for (let c = 0; c < cols; c++)
-    if ((gray(c) & ~dashLow) === onesLow) C.push(c);
-  return { R, C };
-}
-
-// On the flat map a wrapping block is split into several rectangles.
-function loopsFor(
+function loops(
   groups: Implicant[],
-  rows: number,
-  cols: number,
+  rowCount: number,
+  colCount: number,
   colBits: number,
   colors: string[],
 ): Loop[] {
-  const loops: Loop[] = [];
-
-  groups.forEach((g, gi) => {
-    const { R, C } = coveredRC(g, rows, cols, colBits);
-    const pad = 3 + (gi % 3) * 3; // stagger so overlapping groups stay visible
-    const color = colors[gi % colors.length];
-
-    for (const [r0, r1] of runs(R)) {
-      for (const [c0, c1] of runs(C)) {
-        loops.push({
-          key: `${gi}-${r0}-${c0}`,
-          color,
-          left: ORIGIN_X + c0 * (CELL + GAP) + pad,
-          top: ORIGIN_Y + r0 * (CELL + GAP) + pad,
-          width: (c1 - c0 + 1) * CELL + (c1 - c0) * GAP - 2 * pad,
-          height: (r1 - r0 + 1) * CELL + (r1 - r0) * GAP - 2 * pad,
-        });
-      }
-    }
+  return groups.flatMap((group, index) => {
+    const { rows, cols } = coveredCells(group, rowCount, colCount, colBits);
+    const pad = 3 + (index % 3) * 3;
+    const color = colors[index % colors.length];
+    return runs(rows).flatMap(([r0, r1]) =>
+      runs(cols).map(([c0, c1]) => ({
+        key: `${index}-${r0}-${c0}`,
+        color,
+        left: ORIGIN_X + c0 * (CELL + GAP) + pad,
+        top: ORIGIN_Y + r0 * (CELL + GAP) + pad,
+        width: (c1 - c0 + 1) * CELL + (c1 - c0) * GAP - 2 * pad,
+        height: (r1 - r0 + 1) * CELL + (r1 - r0) * GAP - 2 * pad,
+      })),
+    );
   });
-
-  return loops;
 }
 
 export default function KMap({
@@ -140,58 +140,25 @@ export default function KMap({
   onToggle: (term: number) => void;
 }) {
   const [mode, setMode] = useState<Mode>("sop");
-  const [torus, setTorus] = useState(false);
+  const [view, setView] = useState<View>("flat");
   const dims = kmapDims(numVars);
   const { rows, cols, rowBits, colBits } = dims;
 
+  const palette = mode === "pos" ? POS_COLORS : SOP_COLORS;
   const table = new Table(
     outputs.map((_, i) => i),
     outputs,
   );
   const groups = mode === "off" ? [] : computeCover(table, mode === "pos");
 
-  const palette = mode === "pos" ? POS_COLORS : SOP_COLORS;
-  const loops = loopsFor(groups, rows, cols, colBits, palette);
-
   return (
     <div className="flex flex-col gap-3">
-      {/* controls */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.7rem] uppercase tracking-widest">
-        <div className="flex items-center gap-1">
-          <span className="mr-1 text-teal-500">Groups</span>
-          {(["sop", "pos", "off"] as Mode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`rounded-sm border px-2 py-0.5 font-bold transition-colors ${
-                mode === m
-                  ? "border-amber-400/60 bg-amber-400/20 text-amber-200"
-                  : "border-teal-800/60 text-teal-400 hover:bg-teal-400/10"
-              }`}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="mr-1 text-teal-500">View</span>
-          {([false, true] as boolean[]).map((t) => (
-            <button
-              key={String(t)}
-              onClick={() => setTorus(t)}
-              className={`rounded-sm border px-2 py-0.5 font-bold transition-colors ${
-                torus === t
-                  ? "border-amber-400/60 bg-amber-400/20 text-amber-200"
-                  : "border-teal-800/60 text-teal-400 hover:bg-teal-400/10"
-              }`}
-            >
-              {t ? "3D" : "flat"}
-            </button>
-          ))}
-        </div>
+        <Segmented label="Groups" value={mode} options={["sop", "pos", "off"]} onChange={setMode} />
+        <Segmented label="View" value={view} options={["flat", "3d"]} onChange={setView} />
       </div>
 
-      {!torus && (
+      {view === "flat" && (
         <div
           className="relative"
           style={{
@@ -201,8 +168,6 @@ export default function KMap({
             gap: GAP,
           }}
         >
-          {/* corner: column-variables (top-right) over row-variables (bottom-left),
-            split by a diagonal — compact two-line form */}
           <div
             className="relative text-[0.6rem] leading-none font-semibold text-teal-400"
             style={{
@@ -222,10 +187,9 @@ export default function KMap({
             )}
           </div>
 
-          {/* column gray-code headers */}
           {Array.from({ length: cols }, (_, c) => (
             <div
-              key={`ch-${c}`}
+              key={`col-${c}`}
               className="flex items-end justify-center text-xs font-bold tracking-widest text-amber-300/90"
               style={{ gridColumn: c + 2, gridRow: 1 }}
             >
@@ -233,10 +197,9 @@ export default function KMap({
             </div>
           ))}
 
-          {/* row gray-code headers */}
           {Array.from({ length: rows }, (_, r) => (
             <div
-              key={`rh-${r}`}
+              key={`row-${r}`}
               className="flex items-center justify-end pr-1 text-xs font-bold tracking-widest text-amber-300/90"
               style={{ gridColumn: 1, gridRow: r + 2 }}
             >
@@ -247,38 +210,34 @@ export default function KMap({
           {Array.from({ length: rows }, (_, r) =>
             Array.from({ length: cols }, (_, c) => {
               const term = cellTerm(r, c, dims);
-              const state = outputs[term];
               return (
                 <button
                   key={`${r}-${c}`}
                   onClick={() => onToggle(term)}
                   title={`term ${term}`}
                   style={{ gridColumn: c + 2, gridRow: r + 2 }}
-                  className={`flex flex-col items-center justify-center rounded-sm text-lg font-bold transition-colors ${cellClasses(state)}`}
+                  className={`flex flex-col items-center justify-center rounded-sm text-lg font-bold transition-colors ${cellClasses(outputs[term])}`}
                 >
-                  <span className="leading-none">{state}</span>
-                  <span className="text-[0.6rem] font-normal opacity-55">
-                    {term}
-                  </span>
+                  <span className="leading-none">{outputs[term]}</span>
+                  <span className="text-[0.6rem] font-normal opacity-55">{term}</span>
                 </button>
               );
             }),
           )}
 
-          {/* group overlay */}
           <div className="pointer-events-none absolute inset-0">
-            {loops.map((l) => (
+            {loops(groups, rows, cols, colBits, palette).map((loop) => (
               <div
-                key={l.key}
+                key={loop.key}
                 className="absolute rounded-lg"
                 style={{
-                  left: l.left,
-                  top: l.top,
-                  width: l.width,
-                  height: l.height,
-                  border: `2.5px solid ${l.color}`,
-                  backgroundColor: `${l.color}1f`,
-                  boxShadow: `0 0 6px -1px ${l.color}`,
+                  left: loop.left,
+                  top: loop.top,
+                  width: loop.width,
+                  height: loop.height,
+                  border: `2.5px solid ${loop.color}`,
+                  backgroundColor: `${loop.color}1f`,
+                  boxShadow: `0 0 6px -1px ${loop.color}`,
                 }}
               />
             ))}
@@ -286,12 +245,10 @@ export default function KMap({
         </div>
       )}
 
-      {torus && (
+      {view === "3d" && (
         <Suspense
           fallback={
-            <div className="text-[0.7rem] tracking-widest text-teal-500">
-              loading 3D…
-            </div>
+            <div className="text-[0.7rem] tracking-widest text-teal-500">loading 3D…</div>
           }
         >
           <KmapSurface

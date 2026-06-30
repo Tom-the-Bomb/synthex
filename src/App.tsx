@@ -13,7 +13,6 @@ function makeOutputs(numVars: number): CellState[] {
   return Array.from({ length: 1 << numVars }, () => CellState.False);
 }
 
-// A framed "instrument" panel with a labelled title bar.
 function Panel({
   title,
   tag,
@@ -42,7 +41,6 @@ function Panel({
   );
 }
 
-// A single field in the drawing title block.
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col border-l border-teal-800/50 px-3 py-1 first:border-l-0">
@@ -69,10 +67,11 @@ function App() {
     makeOutputs(DEFAULT_VARS),
   );
 
-  // Resize the outputs array, keeping existing values and prefilling new rows.
   function changeVars(next: number) {
     next = Math.min(MAX_VARS, Math.max(MIN_VARS, next));
-    if (next === numVars) return;
+    if (next === numVars) {
+      return;
+    }
     setOutputs((prev) =>
       Array.from({ length: 1 << next }, (_, i) => prev[i] ?? CellState.False),
     );
@@ -90,7 +89,6 @@ function App() {
   return (
     <div className="blueprint-bg min-h-screen px-4 py-8 text-teal-100 sm:px-8">
       <div className="mx-auto flex max-w-5xl flex-col gap-6">
-        {/* Title block */}
         <header className="titleblock flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-black tracking-[0.3em] text-teal-50">
@@ -106,7 +104,6 @@ function App() {
           </div>
         </header>
 
-        {/* Control strip */}
         <div className="flex flex-wrap items-center justify-between gap-4 border border-dashed border-teal-800/60 bg-[#0c1f2c]/60 px-4 py-3">
           <div className="flex items-center gap-3">
             <span className="text-[0.7rem] uppercase tracking-widest text-teal-400">
@@ -149,7 +146,6 @@ function App() {
           </div>
         </div>
 
-        {/* Workspace */}
         <div className="grid items-start gap-6 lg:grid-cols-[auto_1fr]">
           {hasKMap ? (
             <Panel title="K-Map" tag={`${1 << numVars} CELLS`}>

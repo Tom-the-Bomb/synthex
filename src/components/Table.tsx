@@ -1,10 +1,6 @@
 import { CellState, cellClasses } from "../cellState";
 import { bin } from "../kmap";
 
-// Truth table: one row per input combination (term), one column per variable
-// plus the output. Variables are ordered x_n .. x_1 left-to-right so each row
-// reads as a normal binary count, consistent with algorithm.ts where x_{k} is
-// bit (k - 1). The leading "#" column is the decimal term index for reference.
 export default function Table({
   numVars,
   outputs,
@@ -14,7 +10,6 @@ export default function Table({
   outputs: CellState[];
   onToggle: (term: number) => void;
 }) {
-  // x_n (most significant) first, down to x_1.
   const vars = Array.from({ length: numVars }, (_, i) => numVars - i);
 
   return (
