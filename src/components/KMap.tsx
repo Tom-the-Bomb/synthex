@@ -226,28 +226,7 @@ export default function KMap({
           options={["flat", "3d"]}
           onChange={setView}
         />
-        {groupCount > 0 && (
-          <div className="flex items-center gap-1">
-            <span className="mr-1 text-teal-500">Group</span>
-            <StepButton dir="prev" onClick={() => step(-1)} />
-            <span className="w-12 text-center font-bold text-amber-200">
-              {active < 0 ? "all" : `${active + 1}/${groupCount}`}
-            </span>
-            <StepButton dir="next" onClick={() => step(1)} />
-          </div>
-        )}
       </div>
-
-      {active >= 0 && (
-        <div className="flex items-center gap-2 text-[0.7rem]">
-          <span className="font-bold" style={{ color: activeColor }}>
-            Group {active + 1}
-          </span>
-          <span className="text-teal-300">
-            {mode === "pos" ? "M" : "m"}({activeTerms.join(", ")})
-          </span>
-        </div>
-      )}
 
       {view === "flat" && (
         <div className="w-fit p-3">
@@ -372,6 +351,29 @@ export default function KMap({
             active={active}
           />
         </Suspense>
+      )}
+
+      {groupCount > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.7rem] tracking-widest uppercase">
+          <div className="flex items-center gap-1">
+            <span className="mr-1 text-teal-500">Group</span>
+            <StepButton dir="prev" onClick={() => step(-1)} />
+            <span className="w-12 text-center font-bold text-amber-200">
+              {active < 0 ? "all" : `${active + 1}/${groupCount}`}
+            </span>
+            <StepButton dir="next" onClick={() => step(1)} />
+          </div>
+          {active >= 0 && (
+            <div className="flex items-center gap-2 normal-case">
+              <span className="font-bold" style={{ color: activeColor }}>
+                Group {active + 1}
+              </span>
+              <span className="text-teal-300">
+                {mode === "pos" ? "M" : "m"}({activeTerms.join(", ")})
+              </span>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
