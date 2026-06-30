@@ -144,12 +144,14 @@ export default function KmapSurface({
   onToggle,
   groups,
   palette,
+  active,
 }: {
   numVars: number;
   outputs: CellState[];
   onToggle: (term: number) => void;
   groups: Implicant[];
   palette: string[];
+  active: number;
 }) {
   const [hover, setHover] = useState<Hover>(null);
 
@@ -248,7 +250,9 @@ export default function KmapSurface({
               <meshBasicMaterial
                 color={palette[band.groupIndex % palette.length]}
                 transparent
-                opacity={0.34}
+                opacity={
+                  active < 0 ? 0.34 : band.groupIndex === active ? 0.6 : 0.08
+                }
                 side={THREE.DoubleSide}
                 depthWrite={false}
               />

@@ -39,6 +39,7 @@ type View = "flat" | "3d";
 
 interface Loop {
   key: string;
+  groupIndex: number;
   color: string;
   left: number;
   top: number;
@@ -74,6 +75,26 @@ function Segmented<T extends string>({
         </button>
       ))}
     </div>
+  );
+}
+
+function StepButton({
+  dir,
+  onClick,
+}: {
+  dir: "prev" | "next";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={dir === "prev" ? "previous group" : "next group"}
+      className="flex items-center rounded-sm border border-teal-800/60 px-2 py-1 text-teal-300 transition-colors hover:bg-teal-400/10"
+    >
+      <svg viewBox="0 0 10 10" className="h-2.5 w-2.5 fill-current">
+        <path d={dir === "prev" ? "M8 1 2 5 8 9Z" : "M2 1 8 5 2 9Z"} />
+      </svg>
+    </button>
   );
 }
 
@@ -144,6 +165,7 @@ function loops(
     return runs(rows).flatMap(([r0, r1]) =>
       runs(cols).map(([c0, c1]) => ({
         key: `${index}-${r0}-${c0}`,
+        groupIndex: index,
         color,
         left: ORIGIN_X + c0 * (CELL + GAP) + pad,
         top: ORIGIN_Y + r0 * (CELL + GAP) + pad,
@@ -165,6 +187,7 @@ export default function KMap({
 }) {
   const [mode, setMode] = useState<Mode>("sop");
   const [view, setView] = useState<View>("flat");
+  const [selected, setSelected] = useState(-1);
   const dims = kmapDims(numVars);
   const { rows, cols, rowBits, colBits } = dims;
 
@@ -174,6 +197,19 @@ export default function KMap({
     outputs,
   );
   const groups = mode === "off" ? [] : computeCover(table, mode === "pos");
+
+  const groupCount = groups.length;
+  const active = selected >= 0 && selected < groupCount ? selected : -1;
+  const activeColor = palette[active % palette.length];
+  const activeTerms =
+    active >= 0 ? [...groups[active].covered].sort((a, b) => a - b) : [];
+  const activeCells = active >= 0 ? new Set(activeTerms) : null;
+  const step = (dir: number) =>
+    setSelected((prev) => {
+      const current = prev >= 0 && prev < groupCount ? prev : -1;
+      const next = current + dir;
+      return next < 0 ? groupCount - 1 : next >= groupCount ? -1 : next;
+    });
 
   return (
     <div className="flex flex-col gap-3">
@@ -190,93 +226,131 @@ export default function KMap({
           options={["flat", "3d"]}
           onChange={setView}
         />
+        {groupCount > 0 && (
+          <div className="flex items-center gap-1">
+            <span className="mr-1 text-teal-500">Group</span>
+            <StepButton dir="prev" onClick={() => step(-1)} />
+            <span className="w-12 text-center font-bold text-amber-200">
+              {active < 0 ? "all" : `${active + 1}/${groupCount}`}
+            </span>
+            <StepButton dir="next" onClick={() => step(1)} />
+          </div>
+        )}
       </div>
 
+      {active >= 0 && (
+        <div className="flex items-center gap-2 text-[0.7rem]">
+          <span className="font-bold" style={{ color: activeColor }}>
+            Group {active + 1}
+          </span>
+          <span className="text-teal-300">
+            {mode === "pos" ? "M" : "m"}({activeTerms.join(", ")})
+          </span>
+        </div>
+      )}
+
       {view === "flat" && (
-        <div
-          className="relative"
-          style={{
-            display: "grid",
-            gridTemplateColumns: `${CORNER}px repeat(${cols}, ${CELL}px)`,
-            gridTemplateRows: `${HEADER}px repeat(${rows}, ${CELL}px)`,
-            gap: GAP,
-          }}
-        >
+        <div className="w-fit p-3">
           <div
-            className="relative text-[0.6rem] leading-none font-semibold text-teal-400"
+            className="relative"
             style={{
-              gridColumn: 1,
-              gridRow: 1,
-              backgroundImage:
-                "linear-gradient(to top right, transparent calc(50% - 0.5px), rgba(45,212,191,0.4) calc(50% - 0.5px), rgba(45,212,191,0.4) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
+              display: "grid",
+              gridTemplateColumns: `${CORNER}px repeat(${cols}, ${CELL}px)`,
+              gridTemplateRows: `${HEADER}px repeat(${rows}, ${CELL}px)`,
+              gap: GAP,
             }}
           >
-            <span className="absolute top-0 -right-1 whitespace-nowrap">
-              <VarLabels hi={colBits} lo={1} />
-            </span>
-            {rowBits > 0 && (
-              <span className="absolute bottom-1 left-0 whitespace-nowrap">
-                <VarLabels hi={numVars} lo={colBits + 1} />
+            <div
+              className="relative text-[0.6rem] leading-none font-semibold text-teal-400"
+              style={{
+                gridColumn: 1,
+                gridRow: 1,
+                backgroundImage:
+                  "linear-gradient(to top right, transparent calc(50% - 0.5px), rgba(45,212,191,0.4) calc(50% - 0.5px), rgba(45,212,191,0.4) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
+              }}
+            >
+              <span className="absolute top-0 -right-1 whitespace-nowrap">
+                <VarLabels hi={colBits} lo={1} />
               </span>
-            )}
-          </div>
-
-          {Array.from({ length: cols }, (_, c) => (
-            <div
-              key={`col-${c}`}
-              className="flex items-end justify-center text-xs font-bold tracking-widest text-amber-300/90"
-              style={{ gridColumn: c + 2, gridRow: 1 }}
-            >
-              {bin(gray(c), colBits)}
+              {rowBits > 0 && (
+                <span className="absolute bottom-1 left-0 whitespace-nowrap">
+                  <VarLabels hi={numVars} lo={colBits + 1} />
+                </span>
+              )}
             </div>
-          ))}
 
-          {Array.from({ length: rows }, (_, r) => (
-            <div
-              key={`row-${r}`}
-              className="flex items-center justify-end pr-1 text-xs font-bold tracking-widest text-amber-300/90"
-              style={{ gridColumn: 1, gridRow: r + 2 }}
-            >
-              {rowBits > 0 ? bin(gray(r), rowBits) : ""}
-            </div>
-          ))}
-
-          {Array.from({ length: rows }, (_, r) =>
-            Array.from({ length: cols }, (_, c) => {
-              const term = cellTerm(r, c, dims);
-              return (
-                <button
-                  key={`${r}-${c}`}
-                  onClick={() => onToggle(term)}
-                  title={`term ${term}`}
-                  style={{ gridColumn: c + 2, gridRow: r + 2 }}
-                  className={`flex flex-col items-center justify-center rounded-sm text-lg font-bold transition-colors ${cellClasses(outputs[term])}`}
-                >
-                  <span className="leading-none">{outputs[term]}</span>
-                  <span className="text-[0.6rem] font-normal opacity-55">
-                    {term}
-                  </span>
-                </button>
-              );
-            }),
-          )}
-
-          <div className="pointer-events-none absolute inset-0">
-            {loops(groups, rows, cols, colBits, palette).map((loop) => (
+            {Array.from({ length: cols }, (_, c) => (
               <div
-                key={loop.key}
-                className="absolute rounded-lg"
-                style={{
-                  left: loop.left,
-                  top: loop.top,
-                  width: loop.width,
-                  height: loop.height,
-                  border: `2.5px solid ${loop.color}`,
-                  backgroundColor: `${loop.color}1f`,
-                  boxShadow: `0 0 6px -1px ${loop.color}`,
-                }}
-              />
+                key={`col-${c}`}
+                className="flex items-end justify-center text-xs font-bold tracking-widest text-amber-300/90"
+                style={{ gridColumn: c + 2, gridRow: 1 }}
+              >
+                {bin(gray(c), colBits)}
+              </div>
             ))}
+
+            {Array.from({ length: rows }, (_, r) => (
+              <div
+                key={`row-${r}`}
+                className="flex items-center justify-end pr-1 text-xs font-bold tracking-widest text-amber-300/90"
+                style={{ gridColumn: 1, gridRow: r + 2 }}
+              >
+                {rowBits > 0 ? bin(gray(r), rowBits) : ""}
+              </div>
+            ))}
+
+            {Array.from({ length: rows }, (_, r) =>
+              Array.from({ length: cols }, (_, c) => {
+                const term = cellTerm(r, c, dims);
+                const ringed = activeCells?.has(term);
+                return (
+                  <button
+                    key={`${r}-${c}`}
+                    onClick={() => onToggle(term)}
+                    title={`term ${term}`}
+                    style={{
+                      gridColumn: c + 2,
+                      gridRow: r + 2,
+                      ...(ringed
+                        ? {
+                            boxShadow: `0 0 0 3px ${activeColor}, 0 0 12px -2px ${activeColor}`,
+                            zIndex: 1,
+                          }
+                        : {}),
+                    }}
+                    className={`flex flex-col items-center justify-center rounded-sm text-lg font-bold transition-colors ${cellClasses(outputs[term])}`}
+                  >
+                    <span className="leading-none">{outputs[term]}</span>
+                    <span className="text-[0.6rem] font-normal opacity-55">
+                      {term}
+                    </span>
+                  </button>
+                );
+              }),
+            )}
+
+            <div className="pointer-events-none absolute inset-0">
+              {loops(groups, rows, cols, colBits, palette).map((loop) => {
+                const isActive = active >= 0 && loop.groupIndex === active;
+                const dimmed = active >= 0 && loop.groupIndex !== active;
+                return (
+                  <div
+                    key={loop.key}
+                    className="absolute rounded-lg transition-all"
+                    style={{
+                      left: loop.left,
+                      top: loop.top,
+                      width: loop.width,
+                      height: loop.height,
+                      border: `${isActive ? 3.5 : 2.5}px solid ${loop.color}`,
+                      backgroundColor: `${loop.color}${isActive ? "33" : "1f"}`,
+                      boxShadow: dimmed ? "none" : `0 0 6px -1px ${loop.color}`,
+                      opacity: dimmed ? 0.25 : 1,
+                    }}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -295,6 +369,7 @@ export default function KMap({
             onToggle={onToggle}
             groups={groups}
             palette={palette}
+            active={active}
           />
         </Suspense>
       )}
