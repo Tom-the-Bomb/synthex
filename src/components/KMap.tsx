@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { CellState, cellClasses } from "../cellState";
 import { Table, computeCover, type Implicant } from "../algorithm";
 import { bin, cellTerm, gray, kmapDims } from "../kmap";
@@ -144,14 +144,11 @@ export default function KMap({
   const dims = kmapDims(numVars);
   const { rows, cols, rowBits, colBits } = dims;
 
-  const groups = useMemo(() => {
-    if (mode === "off") return [];
-    const table = new Table(
-      outputs.map((_, i) => i),
-      outputs,
-    );
-    return computeCover(table, mode === "pos");
-  }, [mode, outputs]);
+  const table = new Table(
+    outputs.map((_, i) => i),
+    outputs,
+  );
+  const groups = mode === "off" ? [] : computeCover(table, mode === "pos");
 
   const palette = mode === "pos" ? POS_COLORS : SOP_COLORS;
   const loops = loopsFor(groups, rows, cols, colBits, palette);

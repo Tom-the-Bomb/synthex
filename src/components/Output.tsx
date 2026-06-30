@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import katex from "katex";
 import computeExpression, { Table } from "../algorithm";
 import type { CellState } from "../cellState";
@@ -87,21 +87,13 @@ const AMBER = "bg-amber-400/20 text-amber-200";
 const SKY = "bg-sky-400/15 text-sky-200";
 
 export default function Output({ outputs }: { outputs: CellState[] }) {
-  const result = useMemo(() => {
-    const table = new Table(
-      outputs.map((_, i) => i),
-      outputs,
-    );
-    return {
-      sop: computeExpression(table, false),
-      pos: computeExpression(table, true),
-      minterms: table.minterms,
-      maxterms: table.maxterms,
-      dontcares: table.dontcares,
-    };
-  }, [outputs]);
-
-  const { sop, pos, minterms, maxterms, dontcares } = result;
+  const table = new Table(
+    outputs.map((_, i) => i),
+    outputs,
+  );
+  const sop = computeExpression(table, false);
+  const pos = computeExpression(table, true);
+  const { minterms, maxterms, dontcares } = table;
   const hasDc = dontcares.length > 0;
 
   return (

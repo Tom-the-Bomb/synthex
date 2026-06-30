@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Html, Text, Line } from "@react-three/drei";
 import * as THREE from "three";
@@ -26,8 +26,8 @@ const EMISSIVE: Record<CellState, string> = {
   x: "#08191f",
 };
 
-// Subdivided patch over a (u,v) rectangle, disposed on unmount. Bounds are
-// passed as primitives so the geometry memo stays stable across re-renders.
+// Subdivided patch over a (u,v) rectangle, disposed when replaced or unmounted.
+// The compiler keeps `geom` stable while the bounds are unchanged.
 function Patch({
   surface,
   u0,
@@ -48,10 +48,7 @@ function Patch({
   offset?: number;
   children: ReactNode;
 } & React.ComponentProps<"mesh">) {
-  const geom = useMemo(
-    () => buildPatch(surface, u0, u1, v0, v1, seg, seg, offset),
-    [surface, u0, u1, v0, v1, seg, offset],
-  );
+  const geom = buildPatch(surface, u0, u1, v0, v1, seg, seg, offset);
   useEffect(() => () => geom.dispose(), [geom]);
   return (
     <mesh geometry={geom} {...mesh}>
@@ -77,20 +74,17 @@ function Cell({
 }) {
   // Lay the digit flat on the surface (tangent plane), facing outward, kept as
   // upright as world-up allows — so it reads as printed on the shape.
-  const { pos, quat, hoverPos } = useMemo(() => {
-    const p = surface.point(cell.cu, cell.cv);
-    const n = surface.normal(cell.cu, cell.cv).normalize();
-    const ref =
-      Math.abs(n.y) > 0.9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
-    const right = new THREE.Vector3().crossVectors(ref, n).normalize();
-    const up = new THREE.Vector3().crossVectors(n, right).normalize();
-    const m = new THREE.Matrix4().makeBasis(right, up, n);
-    return {
-      pos: p.clone().addScaledVector(n, 0.025),
-      quat: new THREE.Quaternion().setFromRotationMatrix(m),
-      hoverPos: p.clone().addScaledVector(n, 0.18),
-    };
-  }, [surface, cell.cu, cell.cv]);
+  const p = surface.point(cell.cu, cell.cv);
+  const n = surface.normal(cell.cu, cell.cv).normalize();
+  const ref =
+    Math.abs(n.y) > 0.9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(ref, n).normalize();
+  const up = new THREE.Vector3().crossVectors(n, right).normalize();
+  const quat = new THREE.Quaternion().setFromRotationMatrix(
+    new THREE.Matrix4().makeBasis(right, up, n),
+  );
+  const pos = p.clone().addScaledVector(n, 0.025);
+  const hoverPos = p.clone().addScaledVector(n, 0.18);
 
   return (
     <>
@@ -157,26 +151,25 @@ export default function KmapSurface({
     null,
   );
 
-  const spec = useMemo(() => surfaceSpec(numVars), [numVars]);
-  const surfaces = useMemo(
-    () => Array.from({ length: spec.halves }, (_, h) => makeSurface(spec, h)),
-    [spec],
+  const spec = surfaceSpec(numVars);
+  const surfaces = Array.from({ length: spec.halves }, (_, h) =>
+    makeSurface(spec, h),
   );
-  const cells = useMemo(() => cellLayouts(spec), [spec]);
-  const bands = useMemo(() => bandLayouts(groups, spec), [groups, spec]);
+  const cells = cellLayouts(spec);
+  const bands = bandLayouts(groups, spec);
   const seg = spec.topology === "flat" ? 1 : 8;
 
   // E-adjacency links between the two tori (5 var): one per (row, col).
-  const links = useMemo(() => {
-    if (spec.halves !== 2) return [];
-    return cells
-      .filter((c) => c.half === 0)
-      .map((c) => ({
-        a: surfaces[0].point(c.cu, c.cv),
-        b: surfaces[1].point(c.cu, c.cv),
-        key: `${c.row}-${c.col}`,
-      }));
-  }, [cells, surfaces, spec.halves]);
+  const links =
+    spec.halves !== 2
+      ? []
+      : cells
+          .filter((c) => c.half === 0)
+          .map((c) => ({
+            a: surfaces[0].point(c.cu, c.cv),
+            b: surfaces[1].point(c.cu, c.cv),
+            key: `${c.row}-${c.col}`,
+          }));
 
   return (
     <div className="flex w-full flex-col gap-2">
