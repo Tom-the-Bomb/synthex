@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from "react";
-import Table from "./components/Table";
+
+import { CellState, toggleCellState } from "./cellState";
 import KMap from "./components/KMap";
 import Output from "./components/Output";
-import { CellState, toggleCellState } from "./cellState";
+import Table from "./components/Table";
 import { MAX_KMAP_VARS } from "./kmap";
 
 const MIN_VARS = 1;
@@ -27,7 +28,7 @@ function Panel({
   return (
     <section className={`panel ${className}`}>
       <div className="flex items-center justify-between border-b border-teal-800/50 px-4 py-2">
-        <h2 className="text-xs font-bold uppercase tracking-[0.25em] text-teal-300">
+        <h2 className="text-xs font-bold tracking-[0.25em] text-teal-300 uppercase">
           {title}
         </h2>
         {tag && (
@@ -44,7 +45,7 @@ function Panel({
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col border-l border-teal-800/50 px-3 py-1 first:border-l-0">
-      <span className="text-[0.6rem] uppercase tracking-widest text-teal-500">
+      <span className="text-[0.6rem] tracking-widest text-teal-500 uppercase">
         {label}
       </span>
       <span className="font-bold tracking-wider text-amber-200">{value}</span>
@@ -94,7 +95,7 @@ function App() {
             <h1 className="text-3xl font-black tracking-[0.3em] text-teal-50">
               SYNTHEX
             </h1>
-            <p className="mt-1 text-[0.7rem] uppercase tracking-[0.2em] text-teal-400">
+            <p className="mt-1 text-[0.7rem] tracking-[0.2em] text-teal-400 uppercase">
               Karnaugh map · boolean minimizer
             </p>
           </div>
@@ -106,7 +107,7 @@ function App() {
 
         <div className="flex flex-wrap items-center justify-between gap-4 border border-dashed border-teal-800/60 bg-[#0c1f2c]/60 px-4 py-3">
           <div className="flex items-center gap-3">
-            <span className="text-[0.7rem] uppercase tracking-widest text-teal-400">
+            <span className="text-[0.7rem] tracking-widest text-teal-400 uppercase">
               Variables
             </span>
             <div className="flex items-center border border-teal-700/70 bg-[#0a1722]">
@@ -117,7 +118,7 @@ function App() {
               >
                 −
               </button>
-              <span className="w-10 text-center text-lg font-bold tabular-nums text-amber-300">
+              <span className="w-10 text-center text-lg font-bold text-amber-300 tabular-nums">
                 {numVars}
               </span>
               <button
@@ -130,13 +131,13 @@ function App() {
             </div>
             <button
               onClick={() => setOutputs(makeOutputs(numVars))}
-              className="border border-teal-700/70 px-3 py-1.5 text-[0.7rem] font-bold uppercase tracking-widest text-teal-300 transition-colors hover:bg-teal-400/10"
+              className="border border-teal-700/70 px-3 py-1.5 text-[0.7rem] font-bold tracking-widest text-teal-300 uppercase transition-colors hover:bg-teal-400/10"
             >
               Clear
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.7rem] uppercase tracking-wider">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.7rem] tracking-wider uppercase">
             <Swatch box="bg-amber-400" label="1 · min" />
             <Swatch box="bg-sky-950 border border-sky-700" label="0 · max" />
             <Swatch

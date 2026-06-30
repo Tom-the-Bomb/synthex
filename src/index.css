@@ -1,10 +1,5 @@
 @import "tailwindcss";
 
-/* ------------------------------------------------------------------ *
- * Synthex — "drafting blueprint" theme
- * Navy schematic backdrop + framed instrument panels + ink highlights
- * ------------------------------------------------------------------ */
-
 :root {
   --bp-ink: #0a1722; /* page base */
   --bp-panel: #0f2433; /* panel fill */
@@ -20,8 +15,8 @@ html {
 
 body {
   margin: 0;
-  font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
-    monospace;
+  font-family:
+    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   color: #cbe7ea;
 }
 

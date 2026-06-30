@@ -1,9 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Html, Text, Line } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import { useEffect, useState, type ReactNode } from "react";
 import * as THREE from "three";
-import { CellState } from "../cellState";
+
 import type { Implicant } from "../algorithm";
+import { CellState } from "../cellState";
 import {
   surfaceSpec,
   makeSurface,
@@ -173,7 +174,7 @@ export default function KmapSurface({
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex items-center gap-3 text-[0.7rem] uppercase tracking-widest text-teal-400">
+      <div className="flex items-center gap-3 text-[0.7rem] tracking-widest text-teal-400 uppercase">
         {(["1", "0", "x"] as CellState[]).map((state) => (
           <span key={state} className="flex items-center gap-1">
             <span
@@ -236,8 +237,12 @@ export default function KmapSurface({
               v0={band.v0}
               v1={band.v1}
               seg={seg}
-              segU={seg * Math.max(1, Math.round((band.u1 - band.u0) * spec.cols))}
-              segV={seg * Math.max(1, Math.round((band.v1 - band.v0) * spec.rows))}
+              segU={
+                seg * Math.max(1, Math.round((band.u1 - band.u0) * spec.cols))
+              }
+              segV={
+                seg * Math.max(1, Math.round((band.v1 - band.v0) * spec.rows))
+              }
               offset={0.04 + (band.groupIndex % 6) * 0.02}
             >
               <meshBasicMaterial
@@ -268,7 +273,7 @@ export default function KmapSurface({
               distanceFactor={9}
               zIndexRange={[100, 0]}
             >
-              <div className="pointer-events-none whitespace-nowrap rounded-sm border border-teal-600/60 bg-[#0a1722]/95 px-2 py-1 text-[0.7rem] text-teal-100">
+              <div className="pointer-events-none rounded-sm border border-teal-600/60 bg-[#0a1722]/95 px-2 py-1 text-[0.7rem] whitespace-nowrap text-teal-100">
                 <span className="font-bold text-amber-300">m{hover.term}</span>
                 <span className="ml-2 text-teal-400">
                   {termAssignment(hover.term, numVars)}

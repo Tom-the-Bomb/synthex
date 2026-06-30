@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
 import katex from "katex";
+import { useState, type ReactNode } from "react";
+
 import computeExpression, { Table } from "../algorithm";
 import type { CellState } from "../cellState";
 import "katex/dist/katex.min.css";
@@ -74,7 +75,7 @@ function Row({
   return (
     <div className="flex items-baseline gap-3">
       <span
-        className={`w-12 shrink-0 rounded-sm px-2 py-0.5 text-center text-[0.7rem] font-bold uppercase tracking-widest ${tagClass}`}
+        className={`w-12 shrink-0 rounded-sm px-2 py-0.5 text-center text-[0.7rem] font-bold tracking-widest uppercase ${tagClass}`}
       >
         {tag}
       </span>

@@ -1,6 +1,7 @@
 import * as THREE from "three";
-import { gray } from "./kmap";
+
 import type { Implicant } from "./algorithm";
+import { gray } from "./kmap";
 
 export type Topology = "flat" | "cylinder" | "torus" | "twoTorus";
 
@@ -16,15 +17,50 @@ export interface SurfaceSpec {
 export function surfaceSpec(numVars: number): SurfaceSpec {
   switch (numVars) {
     case 1:
-      return { topology: "flat", cols: 2, rows: 1, halves: 1, colBits: 1, rowBits: 0 };
+      return {
+        topology: "flat",
+        cols: 2,
+        rows: 1,
+        halves: 1,
+        colBits: 1,
+        rowBits: 0,
+      };
     case 2:
-      return { topology: "flat", cols: 2, rows: 2, halves: 1, colBits: 1, rowBits: 1 };
+      return {
+        topology: "flat",
+        cols: 2,
+        rows: 2,
+        halves: 1,
+        colBits: 1,
+        rowBits: 1,
+      };
     case 3:
-      return { topology: "cylinder", cols: 4, rows: 2, halves: 1, colBits: 2, rowBits: 1 };
+      return {
+        topology: "cylinder",
+        cols: 4,
+        rows: 2,
+        halves: 1,
+        colBits: 2,
+        rowBits: 1,
+      };
     case 5:
-      return { topology: "twoTorus", cols: 4, rows: 4, halves: 2, colBits: 2, rowBits: 2 };
+      return {
+        topology: "twoTorus",
+        cols: 4,
+        rows: 4,
+        halves: 2,
+        colBits: 2,
+        rowBits: 2,
+      };
     default:
-      return { topology: "torus", cols: 4, rows: 4, halves: 1, colBits: 2, rowBits: 2 };
+      return {
+        topology: "torus",
+        cols: 4,
+        rows: 4,
+        halves: 1,
+        colBits: 2,
+        rowBits: 2,
+      };
   }
 }
 
@@ -40,7 +76,8 @@ export function surfaceTerm(
 
 export function termAssignment(term: number, numVars: number): string {
   const parts = [];
-  for (let k = numVars; k >= 1; k--) parts.push(`x${k}=${(term >> (k - 1)) & 1}`);
+  for (let k = numVars; k >= 1; k--)
+    parts.push(`x${k}=${(term >> (k - 1)) & 1}`);
   return parts.join("  ");
 }
 
@@ -60,7 +97,8 @@ export function makeSurface(spec: SurfaceSpec, half: number): Surface {
   switch (spec.topology) {
     case "torus":
     case "twoTorus": {
-      const yShift = spec.halves === 2 ? (half === 0 ? -TORUS_GAP : TORUS_GAP) : 0;
+      const yShift =
+        spec.halves === 2 ? (half === 0 ? -TORUS_GAP : TORUS_GAP) : 0;
       return {
         point(u, v) {
           const theta = 2 * Math.PI * u;
@@ -103,7 +141,11 @@ export function makeSurface(spec: SurfaceSpec, half: number): Surface {
       const height = spec.rows * FLAT_CELL;
       return {
         point(u, v) {
-          return new THREE.Vector3(u * width - width / 2, v * height - height / 2, 0);
+          return new THREE.Vector3(
+            u * width - width / 2,
+            v * height - height / 2,
+            0,
+          );
         },
         normal() {
           return new THREE.Vector3(0, 0, 1);
@@ -150,7 +192,10 @@ export function buildPatch(
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -219,7 +264,10 @@ export interface BandLayout {
   v1: number;
 }
 
-export function bandLayouts(groups: Implicant[], spec: SurfaceSpec): BandLayout[] {
+export function bandLayouts(
+  groups: Implicant[],
+  spec: SurfaceSpec,
+): BandLayout[] {
   const { cols, rows, colBits, rowBits } = spec;
   const du = 1 / cols;
   const dv = 1 / rows;
@@ -250,7 +298,9 @@ export function bandLayouts(groups: Implicant[], spec: SurfaceSpec): BandLayout[
     const eOnes = (group.ones >> eBit) & 1;
     const eDash = (group.dashes >> eBit) & 1;
     const halves =
-      spec.halves === 1 ? [0] : [0, 1].filter((h) => eDash === 1 || h === eOnes);
+      spec.halves === 1
+        ? [0]
+        : [0, 1].filter((h) => eDash === 1 || h === eOnes);
 
     const colRun = cyclicRun(coveredCols, cols);
     const rowRun = cyclicRun(coveredRows, rows);

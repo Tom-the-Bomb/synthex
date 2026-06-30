@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from "react";
-import { CellState, cellClasses } from "../cellState";
+
 import { Table, computeCover, type Implicant } from "../algorithm";
+import { CellState, cellClasses } from "../cellState";
 import { bin, cellTerm, gray, kmapDims } from "../kmap";
 
 const KmapSurface = lazy(() => import("./KmapSurface"));
@@ -176,7 +177,7 @@ export default function KMap({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.7rem] uppercase tracking-widest">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.7rem] tracking-widest uppercase">
         <Segmented
           label="Groups"
           value={mode}

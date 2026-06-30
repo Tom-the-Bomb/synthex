@@ -15,7 +15,7 @@ export default function Table({
   return (
     <div className="scroll-slim max-h-112 overflow-auto">
       <table className="w-full border-collapse text-center text-sm">
-        <thead className="sticky top-0 z-10 bg-[#0c1f2c] text-[0.7rem] uppercase tracking-widest text-teal-300/90">
+        <thead className="sticky top-0 z-10 bg-[#0c1f2c] text-[0.7rem] tracking-widest text-teal-300/90 uppercase">
           <tr>
             <th className="border-b border-teal-800/60 px-3 py-2 font-semibold text-amber-300/80">
               #
@@ -39,7 +39,7 @@ export default function Table({
               key={term}
               className="border-b border-teal-900/40 last:border-0 hover:bg-teal-400/5"
             >
-              <td className="px-3 py-1 font-bold tabular-nums text-amber-300/70">
+              <td className="px-3 py-1 font-bold text-amber-300/70 tabular-nums">
                 {term}
               </td>
               {bin(term, numVars)
