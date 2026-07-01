@@ -1,6 +1,6 @@
 import { OrbitControls, Html, Text, Line } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import * as THREE from "three";
 
 import type { Implicant } from "../algorithm";
@@ -174,9 +174,18 @@ export default function KmapSurface({
             end: surfaces[1].point(cell.centerU, cell.centerV),
           }));
 
+  // The cylinder stands upright (Y axis), so it wants a level, side-on view;
+  // the flat map wants a near face-on view; the torus reads best from above.
+  const cameraPosition: [number, number, number] =
+    spec.topology === "cylinder"
+      ? [3.4, 1.2, 6]
+      : spec.topology === "flat"
+        ? [0.6, 0.6, 5.5]
+        : [5, 3.6, 7.5];
+
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex items-center gap-3 text-[0.7rem] tracking-widest text-teal-400 uppercase">
+      <div className="ml-0.5 flex items-center gap-3 text-[0.7rem] tracking-widest text-teal-400 uppercase">
         {(["1", "0", "x"] as CellState[]).map((state) => (
           <span key={state} className="flex items-center gap-1">
             <span
@@ -189,104 +198,108 @@ export default function KmapSurface({
       </div>
 
       <div className="h-110 w-full overflow-hidden rounded-md border border-teal-800/50 bg-[#0a1722]">
-        <Canvas camera={{ position: [5, 3.6, 7.5], fov: 45 }} dpr={[1, 2]}>
-          <ambientLight intensity={0.95} />
-          <directionalLight position={[5, 8, 6]} intensity={1.1} />
-          <directionalLight
-            position={[-6, -3, -5]}
-            intensity={0.4}
-            color="#7cf"
-          />
-
-          {surfaces.map((surface, half) => (
-            <Patch
-              key={`base-${half}`}
-              surface={surface}
-              u0={0}
-              u1={1}
-              v0={0}
-              v1={1}
-              seg={seg === 1 ? 1 : 96}
-              offset={-0.03}
-            >
-              <meshStandardMaterial
-                color="#0b2030"
-                roughness={0.85}
-                metalness={0.05}
-                side={THREE.DoubleSide}
-              />
-            </Patch>
-          ))}
-
-          {cells.map((cell) => (
-            <Cell
-              key={`${cell.half}-${cell.row}-${cell.col}`}
-              surface={surfaces[cell.half]}
-              cell={cell}
-              state={outputs[cell.term]}
-              seg={seg}
-              onToggle={onToggle}
-              onHover={setHover}
+        <Canvas camera={{ position: cameraPosition, fov: 45 }} dpr={[1, 2]}>
+          <Suspense fallback={null}>
+            <ambientLight intensity={0.95} />
+            <directionalLight position={[5, 8, 6]} intensity={1.1} />
+            <directionalLight
+              position={[-6, -3, -5]}
+              intensity={0.4}
+              color="#7cf"
             />
-          ))}
 
-          {bands.map((band, i) => (
-            <Patch
-              key={`band-${band.groupIndex}-${band.half}-${i}`}
-              surface={surfaces[band.half]}
-              u0={band.u0}
-              u1={band.u1}
-              v0={band.v0}
-              v1={band.v1}
-              seg={seg}
-              segU={
-                seg * Math.max(1, Math.round((band.u1 - band.u0) * spec.cols))
-              }
-              segV={
-                seg * Math.max(1, Math.round((band.v1 - band.v0) * spec.rows))
-              }
-              offset={0.04 + (band.groupIndex % 6) * 0.02}
-            >
-              <meshBasicMaterial
-                color={palette[band.groupIndex % palette.length]}
-                transparent
-                opacity={
-                  active < 0 ? 0.34 : band.groupIndex === active ? 0.6 : 0.08
+            {surfaces.map((surface, half) => (
+              <Patch
+                key={`base-${half}`}
+                surface={surface}
+                u0={0}
+                u1={1}
+                v0={0}
+                v1={1}
+                seg={seg === 1 ? 1 : 96}
+                offset={-0.03}
+              >
+                <meshStandardMaterial
+                  color="#0b2030"
+                  roughness={0.85}
+                  metalness={0.05}
+                  side={THREE.DoubleSide}
+                />
+              </Patch>
+            ))}
+
+            {cells.map((cell) => (
+              <Cell
+                key={`${cell.half}-${cell.row}-${cell.col}`}
+                surface={surfaces[cell.half]}
+                cell={cell}
+                state={outputs[cell.term]}
+                seg={seg}
+                onToggle={onToggle}
+                onHover={setHover}
+              />
+            ))}
+
+            {bands.map((band, i) => (
+              <Patch
+                key={`band-${band.groupIndex}-${band.half}-${i}`}
+                surface={surfaces[band.half]}
+                u0={band.u0}
+                u1={band.u1}
+                v0={band.v0}
+                v1={band.v1}
+                seg={seg}
+                segU={
+                  seg * Math.max(1, Math.round((band.u1 - band.u0) * spec.cols))
                 }
-                side={THREE.DoubleSide}
-                depthWrite={false}
+                segV={
+                  seg * Math.max(1, Math.round((band.v1 - band.v0) * spec.rows))
+                }
+                offset={0.04 + (band.groupIndex % 6) * 0.02}
+              >
+                <meshBasicMaterial
+                  color={palette[band.groupIndex % palette.length]}
+                  transparent
+                  opacity={
+                    active < 0 ? 0.34 : band.groupIndex === active ? 0.6 : 0.08
+                  }
+                  side={THREE.DoubleSide}
+                  depthWrite={false}
+                />
+              </Patch>
+            ))}
+
+            {links.map((link) => (
+              <Line
+                key={link.key}
+                points={[link.start.toArray(), link.end.toArray()]}
+                color="#5eead4"
+                lineWidth={1}
+                transparent
+                opacity={0.35}
               />
-            </Patch>
-          ))}
+            ))}
 
-          {links.map((link) => (
-            <Line
-              key={link.key}
-              points={[link.start.toArray(), link.end.toArray()]}
-              color="#5eead4"
-              lineWidth={1}
-              transparent
-              opacity={0.35}
-            />
-          ))}
+            {hover && (
+              <Html
+                position={hover.pos}
+                center
+                distanceFactor={9}
+                zIndexRange={[100, 0]}
+              >
+                <div className="pointer-events-none rounded-sm border border-teal-600/60 bg-[#0a1722]/95 px-2 py-1 text-[0.7rem] whitespace-nowrap text-teal-100">
+                  <span className="font-bold text-amber-300">
+                    m{hover.term}
+                  </span>
+                  <span className="ml-2 text-teal-400">
+                    {termAssignment(hover.term, numVars)}
+                  </span>
+                </div>
+              </Html>
+            )}
 
-          {hover && (
-            <Html
-              position={hover.pos}
-              center
-              distanceFactor={9}
-              zIndexRange={[100, 0]}
-            >
-              <div className="pointer-events-none rounded-sm border border-teal-600/60 bg-[#0a1722]/95 px-2 py-1 text-[0.7rem] whitespace-nowrap text-teal-100">
-                <span className="font-bold text-amber-300">m{hover.term}</span>
-                <span className="ml-2 text-teal-400">
-                  {termAssignment(hover.term, numVars)}
-                </span>
-              </div>
-            </Html>
-          )}
-
-          <OrbitControls enablePan={false} minDistance={4} maxDistance={16} />
+            <OrbitControls enablePan={false} minDistance={4} maxDistance={16} />
+          </Suspense>
         </Canvas>
       </div>
     </div>

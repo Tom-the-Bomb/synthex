@@ -255,8 +255,9 @@ export default function KMap({
   const step = (dir: number) =>
     setSelected((prev) => {
       const current = prev >= 0 && prev < groupCount ? prev : -1;
-      const next = current + dir;
-      return next < 0 ? groupCount - 1 : next >= groupCount ? -1 : next;
+      // Cycle through "all" (-1) plus each group, wrapping in both directions.
+      const count = groupCount + 1;
+      return ((current + 1 + dir + count) % count) - 1;
     });
 
   return (
