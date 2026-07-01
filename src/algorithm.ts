@@ -1,5 +1,5 @@
 import { CellState } from "./cellState";
-import { gray } from "./kmap";
+import { cellTerm } from "./kmap";
 
 interface Terms {
   minMaxTerms: number[];
@@ -72,12 +72,6 @@ export class Table {
   }
 }
 
-// term = gray(row) * (number of columns) + gray(col)
-//
-// multiplying the binary equiv of the MS graycode part
-// by the column count shifts the row bits to the left of the column bits
-// i.e. a * c = a << i where c=2^i (where i = # bits/vars per col, c = # cols)
-//
 function gridToTerms(grid: CellState[][], isPOS: boolean): Terms {
   const minMaxTerms = [];
   const dontcares = [];
@@ -87,7 +81,7 @@ function gridToTerms(grid: CellState[][], isPOS: boolean): Terms {
 
   for (let i = 0; i < grid.length; i++) {
     for (let j = 0; j < cols; j++) {
-      const term = gray(i) * cols + gray(j);
+      const term = cellTerm(i, j, cols);
       if (grid[i][j] === CellState.Any) {
         dontcares.push(term);
       } else if (grid[i][j] === target) {

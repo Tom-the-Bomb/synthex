@@ -329,7 +329,7 @@ export default function KMap({
 
             {Array.from({ length: rows }, (_, r) =>
               Array.from({ length: cols }, (_, c) => {
-                const term = cellTerm(r, c, dims);
+                const term = cellTerm(r, c, dims.cols);
                 const ringed = activeCells?.has(term);
                 return (
                   <button

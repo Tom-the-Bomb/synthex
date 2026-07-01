@@ -25,6 +25,12 @@ export function kmapDims(numVars: number): KMapDims {
   return { rows: 1 << rowBits, cols: 1 << colBits, rowBits, colBits };
 }
 
-export function cellTerm(row: number, col: number, { cols }: KMapDims): number {
+// term = gray(row) * (number of columns) + gray(col)
+//
+// multiplying the binary equiv of the MS graycode part
+// by the column count shifts the row bits to the left of the column bits
+// i.e. a * c = a << i where c=2^i (where i = # bits/vars per col, c = # cols)
+//
+export function cellTerm(row: number, col: number, cols: number): number {
   return gray(row) * cols + gray(col);
 }

@@ -27,7 +27,7 @@ function Panel({
 }) {
   return (
     <section className={`panel ${className}`}>
-      <div className="flex items-center justify-between border-b border-teal-800/50 px-4 py-2">
+      <div className="flex items-center justify-between border-b border-teal-800/50 px-4 py-3">
         <h2 className="text-xs font-bold tracking-[0.25em] text-teal-300 uppercase">
           {title}
         </h2>
