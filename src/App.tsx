@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 
 import { CellState, toggleCellState } from "./cellState";
+import ExpressionInput from "./components/ExpressionInput";
 import KMap from "./components/KMap";
 import Output from "./components/Output";
 import Table from "./components/Table";
@@ -67,6 +68,7 @@ function App() {
   const [outputs, setOutputs] = useState<CellState[]>(() =>
     makeOutputs(DEFAULT_VARS),
   );
+  const [clearNonce, setClearNonce] = useState(0);
 
   function changeVars(next: number) {
     next = Math.min(MAX_VARS, Math.max(MIN_VARS, next));
@@ -83,6 +85,11 @@ function App() {
     setOutputs((prev) =>
       prev.map((s, i) => (i === term ? toggleCellState(s) : s)),
     );
+  }
+
+  function applyExpression(nextVars: number, nextOutputs: CellState[]) {
+    setNumVars(nextVars);
+    setOutputs(nextOutputs);
   }
 
   const hasKMap = numVars <= MAX_KMAP_VARS;
@@ -130,7 +137,10 @@ function App() {
               </button>
             </div>
             <button
-              onClick={() => setOutputs(makeOutputs(numVars))}
+              onClick={() => {
+                setOutputs(makeOutputs(numVars));
+                setClearNonce((n) => n + 1);
+              }}
               className="border border-teal-700/70 px-3 py-1.5 text-[0.7rem] font-bold tracking-widest text-teal-300 uppercase transition-colors hover:bg-teal-400/10"
             >
               Clear
@@ -148,20 +158,28 @@ function App() {
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[auto_1fr]">
-          {hasKMap ? (
-            <Panel title="K-Map" tag={`${1 << numVars} CELLS`}>
-              <div className="overflow-x-auto">
-                <KMap numVars={numVars} outputs={outputs} onToggle={toggle} />
-              </div>
-            </Panel>
-          ) : (
-            <Panel title="K-Map" tag="N/A">
-              <p className="max-w-xs text-sm leading-relaxed text-teal-500/80">
-                The map supports up to {MAX_KMAP_VARS} variables. Use the truth
-                table to edit larger functions.
-              </p>
-            </Panel>
-          )}
+          <div className="flex flex-col gap-6">
+            {hasKMap ? (
+              <Panel title="K-Map" tag={`${1 << numVars} CELLS`}>
+                <div className="overflow-x-auto">
+                  <KMap numVars={numVars} outputs={outputs} onToggle={toggle} />
+                </div>
+              </Panel>
+            ) : (
+              <Panel title="K-Map" tag="N/A">
+                <p className="max-w-xs text-sm leading-relaxed text-teal-500/80">
+                  The map supports up to {MAX_KMAP_VARS} variables. Use the
+                  truth table to edit larger functions.
+                </p>
+              </Panel>
+            )}
+
+            <ExpressionInput
+              key={clearNonce}
+              numVars={numVars}
+              onApply={applyExpression}
+            />
+          </div>
 
           <Panel title="Truth Table" tag={`${1 << numVars} ROWS`}>
             <Table numVars={numVars} outputs={outputs} onToggle={toggle} />
