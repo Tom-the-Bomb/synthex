@@ -23,7 +23,9 @@ function Row({
       >
         {tag}
       </span>
-      <div className="scroll-slim overflow-x-auto py-1">{children}</div>
+      <div className="scroll-slim min-w-0 flex-1 overflow-x-auto py-1">
+        {children}
+      </div>
     </div>
   );
 }
