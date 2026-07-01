@@ -58,7 +58,7 @@ body {
   pointer-events: none;
 }
 
-/* Engineering "title block" — fielded header like a drawing's name plate. */
+/* Engineering "title block" - fielded header like a drawing's name plate. */
 .titleblock {
   position: relative;
   background:

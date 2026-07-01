@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://synthex.tomthebomb.dev/sitemap.xml

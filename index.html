@@ -2,9 +2,84 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>synthex</title>
+
+    <title>Synthex - Karnaugh Map &amp; Boolean Minimizer</title>
+    <meta
+      name="description"
+      content="Interactive Karnaugh map and boolean expression minimizer. Edit a truth table or grouped K-map for up to 8 variables, get the minimal SOP/POS via Quine-McCluskey, and explore wrapping adjacency on a 3D torus."
+    />
+    <meta name="author" content="Tom-the-Bomb" />
+    <meta
+      name="keywords"
+      content="Karnaugh map, K-map, boolean minimizer, Quine-McCluskey, Petrick's method, SOP, POS, truth table, prime implicants, logic minimization, digital logic"
+    />
+    <meta name="theme-color" content="#0a1722" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://synthex.tomthebomb.dev/" />
+
+    <!-- icons -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content="Synthex" />
+    <meta
+      property="og:title"
+      content="Synthex - Karnaugh Map & Boolean Minimizer"
+    />
+    <meta
+      property="og:description"
+      content="Interactive K-map & boolean minimizer: truth table, grouped K-map, minimal SOP/POS, and a 3D torus view."
+    />
+    <meta property="og:url" content="https://synthex.tomthebomb.dev/" />
+    <meta
+      property="og:image"
+      content="https://synthex.tomthebomb.dev/og-image.png"
+    />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="1024" />
+    <meta property="og:image:alt" content="Synthex logo" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="Synthex - Karnaugh Map & Boolean Minimizer"
+    />
+    <meta
+      name="twitter:description"
+      content="Interactive K-map & boolean minimizer with truth table, grouping, and a 3D torus view."
+    />
+    <meta
+      name="twitter:image"
+      content="https://synthex.tomthebomb.dev/og-image.png"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Synthex",
+        "url": "https://synthex.tomthebomb.dev/",
+        "description": "Interactive Karnaugh map and boolean expression minimizer with truth table, prime-implicant grouping, minimal SOP/POS via Quine-McCluskey, and a 3D torus view.",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript",
+        "image": "https://synthex.tomthebomb.dev/og-image.png",
+        "author": {
+          "@type": "Person",
+          "name": "Tom-the-Bomb",
+          "url": "https://github.com/tom-the-bomb"
+        },
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

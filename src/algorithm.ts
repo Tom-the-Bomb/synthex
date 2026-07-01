@@ -1,4 +1,5 @@
 import { CellState } from "./cellState";
+import { gray } from "./kmap";
 
 interface Terms {
   minMaxTerms: number[];
@@ -69,12 +70,6 @@ export class Table {
       ? { minMaxTerms: this.maxterms, dontcares: this.dontcares }
       : { minMaxTerms: this.minterms, dontcares: this.dontcares };
   }
-}
-
-// gray code of an index: gray(0,1,2,3,...) = 0 (00), 1 (01), 3 (11), 2 (10), 6 (110), 7 (111), 5 (101), 4 (100), ...
-// consecutive indices differ in exactly one bit, which is precisely why adjacent K-map cells differ in a single variable.
-function gray(x: number) {
-  return x ^ (x >> 1);
 }
 
 // term = gray(row) * (number of columns) + gray(col)

@@ -1,6 +1,8 @@
 export const MAX_KMAP_VARS = 5;
 
-export function gray(x: number): number {
+// gray code of an index: gray(0,1,2,3,...) = 0 (00), 1 (01), 3 (11), 2 (10), 6 (110), 7 (111), 5 (101), 4 (100), ...
+// consecutive indices differ in exactly one bit, which is precisely why adjacent K-map cells differ in a single variable.
+export function gray(x: number) {
   return x ^ (x >> 1);
 }
 
