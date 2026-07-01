@@ -1,8 +1,9 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 
 import { Table, computeCover, type Implicant } from "../algorithm";
 import { CellState, cellClasses } from "../cellState";
 import { bin, cellTerm, gray, kmapDims } from "../kmap";
+import { TermSet } from "./terms";
 
 const KmapSurface = lazy(() => import("./KmapSurface"));
 
@@ -176,6 +177,52 @@ function loops(
   });
 }
 
+function GroupExpression({
+  group,
+  numVars,
+  isPOS,
+}: {
+  group: Implicant;
+  numVars: number;
+  isPOS: boolean;
+}) {
+  const literals: ReactNode[] = [];
+  for (let bit = numVars - 1; bit >= 0; bit--) {
+    const mask = 1 << bit;
+    if (group.dashes & mask) {
+      continue;
+    }
+    const complemented = ((group.ones & mask) !== 0) === isPOS;
+    literals.push(
+      <span key={bit} className="whitespace-nowrap">
+        {complemented ? <span className="overline">x</span> : "x"}
+        <sub>{bit + 1}</sub>
+      </span>,
+    );
+  }
+
+  if (literals.length === 0) {
+    return <span className="mb-0.5">{isPOS ? "0" : "1"}</span>;
+  }
+
+  if (!isPOS) {
+    return <span className="mb-0.5 inline-flex gap-0.5">{literals}</span>;
+  }
+
+  const sum: ReactNode[] = [];
+  literals.forEach((literal, i) => {
+    if (i > 0) {
+      sum.push(<span key={`plus-${i}`}> + </span>);
+    }
+    sum.push(literal);
+  });
+  return (
+    <span className="mb-0.5 whitespace-nowrap">
+      {literals.length > 1 ? <>({sum})</> : sum}
+    </span>
+  );
+}
+
 export default function KMap({
   numVars,
   outputs,
@@ -188,6 +235,7 @@ export default function KMap({
   const [mode, setMode] = useState<Mode>("sop");
   const [view, setView] = useState<View>("flat");
   const [selected, setSelected] = useState(-1);
+  const [showExpr, setShowExpr] = useState(false);
   const dims = kmapDims(numVars);
   const { rows, cols, rowBits, colBits } = dims;
 
@@ -355,7 +403,7 @@ export default function KMap({
 
       {groupCount > 0 && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.7rem] tracking-widest uppercase">
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <span className="mr-1 text-teal-500">Group</span>
             <StepButton dir="prev" onClick={() => step(-1)} />
             <span className="w-12 text-center font-bold text-amber-200">
@@ -364,13 +412,37 @@ export default function KMap({
             <StepButton dir="next" onClick={() => step(1)} />
           </div>
           {active >= 0 && (
-            <div className="flex items-center gap-2 normal-case">
-              <span className="font-bold" style={{ color: activeColor }}>
+            <div className="flex min-w-0 items-center gap-2 tracking-normal text-teal-300 normal-case">
+              <span
+                className="shrink-0 font-bold"
+                style={{ color: activeColor }}
+              >
                 Group {active + 1}
               </span>
-              <span className="text-teal-300">
-                {mode === "pos" ? "M" : "m"}({activeTerms.join(", ")})
-              </span>
+              {showExpr ? (
+                <GroupExpression
+                  group={groups[active]}
+                  numVars={numVars}
+                  isPOS={mode === "pos"}
+                />
+              ) : (
+                <TermSet
+                  key={active}
+                  symbol={mode === "pos" ? "M" : "m"}
+                  terms={activeTerms}
+                  plain
+                />
+              )}
+              <button
+                onClick={() => setShowExpr((v) => !v)}
+                title={showExpr ? "show terms" : "show expression"}
+                aria-label={showExpr ? "show terms" : "show expression"}
+                className="shrink-0 rounded-sm border border-teal-800/60 px-1.5 py-1 text-teal-400 transition-colors hover:bg-teal-400/10"
+              >
+                <svg viewBox="0 0 16 16" className="h-3 w-3 fill-current">
+                  <path d="M2 4H11V1L15 5L11 9V6H2Z M14 12H5V15L1 11L5 7V10H14Z" />
+                </svg>
+              </button>
             </div>
           )}
         </div>
