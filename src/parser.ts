@@ -1,7 +1,5 @@
 import { CellState } from "./cellState";
-
-// Keep in sync with MAX_VARS in App.tsx (the truth-table limit).
-const MAX_VARS = 8;
+import { MAX_VARS } from "./kmap";
 
 type Token =
   | { type: "var"; index: number; pos: number }

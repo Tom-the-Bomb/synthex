@@ -5,10 +5,9 @@ import ExpressionInput from "./components/ExpressionInput";
 import KMap from "./components/KMap";
 import Output from "./components/Output";
 import Table from "./components/Table";
-import { MAX_KMAP_VARS } from "./kmap";
+import { MAX_KMAP_VARS, MAX_VARS } from "./kmap";
 
 const MIN_VARS = 1;
-const MAX_VARS = 8;
 const DEFAULT_VARS = 4;
 
 function makeOutputs(numVars: number): CellState[] {
