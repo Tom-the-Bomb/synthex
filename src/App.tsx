@@ -157,10 +157,14 @@ function App() {
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[auto_1fr]">
-          <div className="flex flex-col gap-6">
+          <div className="flex min-w-0 flex-col gap-6">
             {hasKMap ? (
-              <Panel title="K-Map" tag={`${1 << numVars} CELLS`}>
-                <div className="overflow-x-auto">
+              <Panel
+                title="K-Map"
+                tag={`${1 << numVars} CELLS`}
+                className="min-w-0"
+              >
+                <div className="scroll-slim overflow-x-auto">
                   <KMap numVars={numVars} outputs={outputs} onToggle={toggle} />
                 </div>
               </Panel>
@@ -180,7 +184,11 @@ function App() {
             />
           </div>
 
-          <Panel title="Truth Table" tag={`${1 << numVars} ROWS`}>
+          <Panel
+            title="Truth Table"
+            tag={`${1 << numVars} ROWS`}
+            className="min-w-0"
+          >
             <Table numVars={numVars} outputs={outputs} onToggle={toggle} />
           </Panel>
         </div>
