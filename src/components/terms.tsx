@@ -6,6 +6,11 @@ import "katex/dist/katex.min.css";
 const COLLAPSE_LIMIT = 16;
 const EDGE = 6;
 
+// Minimized expressions have far fewer, but much wider, terms than a raw term
+// list, so they collapse sooner.
+const EXPR_LIMIT = 8;
+const EXPR_EDGE = 3;
+
 export function Tex({ tex, className }: { tex: string; className?: string }) {
   return (
     <span
@@ -78,4 +83,50 @@ export function TermSet({
   }
 
   return body;
+}
+
+// Collapsible minimized expression, e.g. f = x1x2 + x3 + ... A long cover
+// collapses to head […] tail, with the term separator kept on both sides of the
+// toggle so the operators still read correctly. Relies on an ancestor to scroll
+// when expanded, mirroring the KaTeX TermSet.
+export function ExprSet({
+  prefix,
+  terms,
+  sep,
+  className,
+}: {
+  prefix: string;
+  terms: string[];
+  sep: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const long = terms.length > EXPR_LIMIT;
+  const join = (parts: string[]) => parts.join(sep);
+  const toggle = long ? (
+    <Toggle open={open} onClick={() => setOpen((o) => !o)} />
+  ) : null;
+
+  if (!long || open) {
+    return (
+      <span className="whitespace-nowrap">
+        <Tex tex={`${prefix}${join(terms)}`} className={className} />
+        {toggle}
+      </span>
+    );
+  }
+
+  return (
+    <span className="whitespace-nowrap">
+      <Tex
+        tex={`${prefix}${join(terms.slice(0, EXPR_EDGE))}${sep}`}
+        className={className}
+      />
+      {toggle}
+      <Tex
+        tex={`${sep}${join(terms.slice(-EXPR_EDGE))}`}
+        className={className}
+      />
+    </span>
+  );
 }

@@ -289,47 +289,39 @@ function selectCover(
   return primeImplicants.filter((_, i) => (min & (1n << BigInt(i))) !== 0n);
 }
 
-// convert a list of prime implicants to a string expression (SOP or POS) in LaTeX format
-function implicantsToExpression(
-  implicants: Implicant[],
+// convert a single prime implicant to its LaTeX literal:
+// a product of literals for SOP, a (parenthesised) sum for POS
+function implicantLatex(
+  implicant: Implicant,
   numVars: number,
   isPOS: boolean,
 ): string {
-  if (implicants.length === 0) {
-    // if no implicants, then function is always False (for SOP) or always True (for POS)
-    return isPOS ? "1" : "0";
+  const term = [];
+
+  for (let i = numVars - 1; i >= 0; i--) {
+    const mask = 1 << i;
+
+    if ((implicant.dashes & mask) !== 0) {
+      continue;
+    } else if (((implicant.ones & mask) !== 0) !== isPOS) {
+      // if isPOS=true and (bit is 1)=false => x_i
+      // if isPOS=false and (bit is 1)=true => x_i
+      //
+      // => (bit is 1) !== isPOS => x_i
+      term.push(`x_{${i + 1}}`);
+    } else {
+      term.push(`\\overline{x_{${i + 1}}}`);
+    }
+  }
+  if (term.length === 0) {
+    return isPOS ? "0" : "1";
   }
 
-  return implicants
-    .map((implicant) => {
-      const term = [];
-
-      for (let i = numVars - 1; i >= 0; i--) {
-        const mask = 1 << i;
-
-        if ((implicant.dashes & mask) !== 0) {
-          continue;
-        } else if (((implicant.ones & mask) !== 0) !== isPOS) {
-          // if isPOS=true and (bit is 1)=false => x_i
-          // if isPOS=false and (bit is 1)=true => x_i
-          //
-          // => (bit is 1) !== isPOS => x_i
-          term.push(`x_{${i + 1}}`);
-        } else {
-          term.push(`\\overline{x_{${i + 1}}}`);
-        }
-      }
-      if (term.length === 0) {
-        return isPOS ? "0" : "1";
-      }
-
-      if (!isPOS) {
-        return term.join("\\,");
-      }
-      // a single-literal sum term needs no wrapping parentheses
-      return term.length === 1 ? term[0] : `(${term.join(" + ")})`;
-    })
-    .join(isPOS ? "\\," : " + ");
+  if (!isPOS) {
+    return term.join("\\,");
+  }
+  // a single-literal sum term needs no wrapping parentheses
+  return term.length === 1 ? term[0] : `(${term.join(" + ")})`;
 }
 
 function termsAndVars(
@@ -356,11 +348,30 @@ export function computeCover(
   return selectCover(implicants, minMaxTerms);
 }
 
+// The LaTeX literals of the minimized cover, one per group (an SOP product or a
+// POS sum term), or a single "1"/"0" when the function is constant.
+export function minimizedTerms(
+  cells: CellState[][] | Table,
+  isPOS: boolean,
+): string[] {
+  const { numVars } = termsAndVars(cells, isPOS);
+  const cover = computeCover(cells, isPOS);
+  if (cover.length === 0) {
+    // no implicants => function is always False (SOP) or always True (POS)
+    return [isPOS ? "1" : "0"];
+  }
+  return cover.map((implicant) => implicantLatex(implicant, numVars, isPOS));
+}
+
+// the join between cover terms: " + " for an SOP sum, juxtaposition for a POS product
+export function coverSeparator(isPOS: boolean): string {
+  return isPOS ? "\\," : " + ";
+}
+
 // convert a list of cells (or a Table) to a string expression (SOP or POS) in LaTeX format
 export default function computeExpression(
   cells: CellState[][] | Table,
   isPOS: boolean,
 ): string {
-  const { numVars } = termsAndVars(cells, isPOS);
-  return implicantsToExpression(computeCover(cells, isPOS), numVars, isPOS);
+  return minimizedTerms(cells, isPOS).join(coverSeparator(isPOS));
 }

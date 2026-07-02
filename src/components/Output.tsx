@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-import computeExpression, { Table } from "../algorithm";
+import { Table, minimizedTerms, coverSeparator } from "../algorithm";
 import type { CellState } from "../cellState";
-import { Tex, TermSet } from "./terms";
+import { Tex, TermSet, ExprSet } from "./terms";
 
 const AMBER = "bg-amber-400/20 text-amber-200";
 const SKY = "bg-sky-400/15 text-sky-200";
@@ -70,14 +70,18 @@ export default function Output({ outputs }: { outputs: CellState[] }) {
 
       <div className="mt-1 flex flex-col gap-3 border-t border-dashed border-teal-800/60 pt-3">
         <Row tag="SOP" tagClass={AMBER}>
-          <Tex
-            tex={`f = ${computeExpression(table, false)}`}
+          <ExprSet
+            prefix="f = "
+            terms={minimizedTerms(table, false)}
+            sep={coverSeparator(false)}
             className="text-lg"
           />
         </Row>
         <Row tag="POS" tagClass={SKY}>
-          <Tex
-            tex={`f = ${computeExpression(table, true)}`}
+          <ExprSet
+            prefix="f = "
+            terms={minimizedTerms(table, true)}
+            sep={coverSeparator(true)}
             className="text-lg"
           />
         </Row>
