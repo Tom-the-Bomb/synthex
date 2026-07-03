@@ -1,12 +1,12 @@
 import { lazy, Suspense, useState, type ReactNode } from "react";
 
-import { Table, computeCover, type Implicant } from "../algorithm";
-import { CellState, cellClasses } from "../cellState";
-import { implicantLiterals } from "../expression";
-import { bin, cellTerm, coveredIndices, gray, kmapDims } from "../kmap";
 import { TermSet } from "./terms";
+import { Table, computeCover, type Implicant } from "../lib/algorithm";
+import { CellState, cellClasses } from "../lib/cellState";
+import { implicantLiterals } from "../lib/expression";
+import { bin, cellTerm, coveredIndices, gray, kmapDims } from "../lib/kmap";
 
-const KmapSurface = lazy(() => import("./KmapSurface"));
+const KmapSurface = lazy(() => import("./KMapSurface"));
 
 const CELL = 46;
 const GAP = 6;

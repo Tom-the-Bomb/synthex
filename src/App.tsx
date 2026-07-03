@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from "react";
 
-import { CellState, toggleCellState } from "./cellState";
 import ExpressionInput from "./components/ExpressionInput";
 import KMap from "./components/KMap";
 import Output from "./components/Output";
 import Table from "./components/Table";
-import { MAX_KMAP_VARS, MAX_VARS } from "./kmap";
+import { CellState, toggleCellState } from "./lib/cellState";
+import { MAX_KMAP_VARS, MAX_VARS } from "./lib/kmap";
 
 const MIN_VARS = 1;
 const DEFAULT_VARS = 4;

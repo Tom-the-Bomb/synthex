@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import type { CellState } from "../cellState";
-import { parseExpression } from "../parser";
+import type { CellState } from "../lib/cellState";
+import { parseExpression } from "../lib/parser";
 
 export default function ExpressionInput({
   numVars,

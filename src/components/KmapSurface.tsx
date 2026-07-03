@@ -3,8 +3,8 @@ import { Canvas } from "@react-three/fiber";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import * as THREE from "three";
 
-import type { Implicant } from "../algorithm";
-import { CellState } from "../cellState";
+import type { Implicant } from "../lib/algorithm";
+import { CellState } from "../lib/cellState";
 import {
   surfaceSpec,
   makeSurface,
@@ -14,7 +14,7 @@ import {
   termAssignment,
   type Surface,
   type CellLayout,
-} from "../surface";
+} from "../lib/surface";
 
 type Hover = { term: number; pos: THREE.Vector3 } | null;
 

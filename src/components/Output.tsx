@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
-import { Table } from "../algorithm";
-import type { CellState } from "../cellState";
-import { minimizedTerms, coverSeparator } from "../expression";
 import { Tex, TermSet, ExprSet } from "./terms";
+import { Table } from "../lib/algorithm";
+import type { CellState } from "../lib/cellState";
+import { minimizedTerms, coverSeparator } from "../lib/expression";
 
 const AMBER = "bg-amber-400/20 text-amber-200";
 const SKY = "bg-sky-400/15 text-sky-200";

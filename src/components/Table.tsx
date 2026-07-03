@@ -1,5 +1,5 @@
-import { CellState, cellClasses } from "../cellState";
-import { bin } from "../kmap";
+import { CellState, cellClasses } from "../lib/cellState";
+import { bin } from "../lib/kmap";
 
 export default function Table({
   numVars,
