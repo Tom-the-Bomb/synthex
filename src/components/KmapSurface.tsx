@@ -138,7 +138,7 @@ function Cell({
   );
 }
 
-export default function KmapSurface({
+export default function KMapSurface({
   numVars,
   outputs,
   onToggle,

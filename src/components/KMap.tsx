@@ -6,7 +6,7 @@ import { CellState, cellClasses } from "../lib/cellState";
 import { implicantLiterals } from "../lib/expression";
 import { bin, cellTerm, coveredIndices, gray, kmapDims } from "../lib/kmap";
 
-const KmapSurface = lazy(() => import("./KMapSurface"));
+const KMapSurface = lazy(() => import("./KMapSurface"));
 
 const CELL = 46;
 const GAP = 6;
@@ -373,7 +373,7 @@ export default function KMap({
             </div>
           }
         >
-          <KmapSurface
+          <KMapSurface
             numVars={numVars}
             outputs={outputs}
             onToggle={onToggle}
