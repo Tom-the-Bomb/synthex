@@ -2,7 +2,8 @@ import { lazy, Suspense, useState, type ReactNode } from "react";
 
 import { Table, computeCover, type Implicant } from "../algorithm";
 import { CellState, cellClasses } from "../cellState";
-import { bin, cellTerm, gray, kmapDims } from "../kmap";
+import { implicantLiterals } from "../expression";
+import { bin, cellTerm, coveredIndices, gray, kmapDims } from "../kmap";
 import { TermSet } from "./terms";
 
 const KmapSurface = lazy(() => import("./KmapSurface"));
@@ -132,24 +133,14 @@ function coveredCells(
   colCount: number,
   colBits: number,
 ) {
-  const onesLow = group.ones & (colCount - 1);
-  const dashLow = group.dashes & (colCount - 1);
-  const onesHigh = group.ones >> colBits;
-  const dashHigh = group.dashes >> colBits;
-
-  const rows: number[] = [];
-  for (let r = 0; r < rowCount; r++) {
-    if ((gray(r) & ~dashHigh) === onesHigh) {
-      rows.push(r);
-    }
-  }
-  const cols: number[] = [];
-  for (let c = 0; c < colCount; c++) {
-    if ((gray(c) & ~dashLow) === onesLow) {
-      cols.push(c);
-    }
-  }
-  return { rows, cols };
+  return {
+    rows: coveredIndices(
+      rowCount,
+      group.ones >> colBits,
+      group.dashes >> colBits,
+    ),
+    cols: coveredIndices(colCount, group.ones, group.dashes),
+  };
 }
 
 function loops(
@@ -186,20 +177,14 @@ function GroupExpression({
   numVars: number;
   isPOS: boolean;
 }) {
-  const literals: ReactNode[] = [];
-  for (let bit = numVars - 1; bit >= 0; bit--) {
-    const mask = 1 << bit;
-    if (group.dashes & mask) {
-      continue;
-    }
-    const complemented = ((group.ones & mask) !== 0) === isPOS;
-    literals.push(
+  const literals: ReactNode[] = implicantLiterals(group, numVars, isPOS).map(
+    ({ bit, complemented }) => (
       <span key={bit} className="whitespace-nowrap">
         {complemented ? <span className="overline">x</span> : "x"}
         <sub>{bit + 1}</sub>
-      </span>,
-    );
-  }
+      </span>
+    ),
+  );
 
   if (literals.length === 0) {
     return <span className="mb-0.5">{isPOS ? "0" : "1"}</span>;
@@ -240,10 +225,7 @@ export default function KMap({
   const { rows, cols, rowBits, colBits } = dims;
 
   const palette = mode === "pos" ? POS_COLORS : SOP_COLORS;
-  const table = new Table(
-    outputs.map((_, i) => i),
-    outputs,
-  );
+  const table = new Table(outputs);
   const groups = mode === "off" ? [] : computeCover(table, mode === "pos");
 
   const groupCount = groups.length;

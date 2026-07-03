@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import type { Implicant } from "./algorithm";
-import { gray } from "./kmap";
+import { coveredIndices, gray } from "./kmap";
 
 export type Topology = "flat" | "cylinder" | "torus" | "twoTorus";
 
@@ -272,28 +272,15 @@ export function bandLayouts(
   const du = 1 / cols;
   const dv = 1 / rows;
   const eBit = colBits + rowBits;
-  const lowMask = cols - 1;
-  const midMask = (rows - 1) << colBits;
   const bands: BandLayout[] = [];
 
   groups.forEach((group, groupIndex) => {
-    const onesLow = group.ones & lowMask;
-    const dashLow = group.dashes & lowMask;
-    const onesMid = (group.ones & midMask) >> colBits;
-    const dashMid = (group.dashes & midMask) >> colBits;
-
-    const coveredCols: number[] = [];
-    for (let col = 0; col < cols; col++) {
-      if ((gray(col) & ~dashLow & lowMask) === onesLow) {
-        coveredCols.push(col);
-      }
-    }
-    const coveredRows: number[] = [];
-    for (let row = 0; row < rows; row++) {
-      if ((gray(row) & ~dashMid & (rows - 1)) === onesMid) {
-        coveredRows.push(row);
-      }
-    }
+    const coveredCols = coveredIndices(cols, group.ones, group.dashes);
+    const coveredRows = coveredIndices(
+      rows,
+      group.ones >> colBits,
+      group.dashes >> colBits,
+    );
 
     const eOnes = (group.ones >> eBit) & 1;
     const eDash = (group.dashes >> eBit) & 1;

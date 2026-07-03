@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
-import { Table, minimizedTerms, coverSeparator } from "../algorithm";
+import { Table } from "../algorithm";
 import type { CellState } from "../cellState";
+import { minimizedTerms, coverSeparator } from "../expression";
 import { Tex, TermSet, ExprSet } from "./terms";
 
 const AMBER = "bg-amber-400/20 text-amber-200";
@@ -31,10 +32,7 @@ function Row({
 }
 
 export default function Output({ outputs }: { outputs: CellState[] }) {
-  const table = new Table(
-    outputs.map((_, i) => i),
-    outputs,
-  );
+  const table = new Table(outputs);
   const ones = table.minterms;
   const zeros = table.maxterms;
   const dashes = table.dontcares;

@@ -1,5 +1,4 @@
 import { CellState } from "./cellState";
-import { cellTerm } from "./kmap";
 
 interface Terms {
   minMaxTerms: number[];
@@ -40,57 +39,41 @@ export class Implicant {
   }
 }
 
+// A function's outputs indexed by term number, exposing the term groupings
+// (minterms / maxterms / don't-cares) the minimizer works from.
 export class Table {
-  inputs: number[] = [];
-  outputs: CellState[] = [];
+  outputs: CellState[];
 
-  constructor(inputs: number[] = [], outputs: CellState[] = []) {
-    this.inputs = inputs;
+  constructor(outputs: CellState[]) {
     this.outputs = outputs;
   }
 
   get numVars(): number {
-    return Math.log2(this.inputs.length);
+    return Math.log2(this.outputs.length);
+  }
+
+  private termsWith(state: CellState): number[] {
+    return this.outputs.flatMap((s, i) => (s === state ? [i] : []));
   }
 
   get minterms(): number[] {
-    return this.inputs.filter((_, i) => this.outputs[i] === CellState.True);
+    return this.termsWith(CellState.True);
   }
 
   get maxterms(): number[] {
-    return this.inputs.filter((_, i) => this.outputs[i] === CellState.False);
+    return this.termsWith(CellState.False);
   }
 
   get dontcares(): number[] {
-    return this.inputs.filter((_, i) => this.outputs[i] === CellState.Any);
+    return this.termsWith(CellState.Any);
   }
 
   toTerms(isPOS: boolean): Terms {
-    return isPOS
-      ? { minMaxTerms: this.maxterms, dontcares: this.dontcares }
-      : { minMaxTerms: this.minterms, dontcares: this.dontcares };
+    return {
+      minMaxTerms: isPOS ? this.maxterms : this.minterms,
+      dontcares: this.dontcares,
+    };
   }
-}
-
-function gridToTerms(grid: CellState[][], isPOS: boolean): Terms {
-  const minMaxTerms = [];
-  const dontcares = [];
-  const cols = grid[0].length;
-
-  const target = isPOS ? CellState.False : CellState.True;
-
-  for (let i = 0; i < grid.length; i++) {
-    for (let j = 0; j < cols; j++) {
-      const term = cellTerm(i, j, cols);
-      if (grid[i][j] === CellState.Any) {
-        dontcares.push(term);
-      } else if (grid[i][j] === target) {
-        minMaxTerms.push(term);
-      }
-    }
-  }
-
-  return { minMaxTerms, dontcares };
 }
 
 // count # of 1-bits
@@ -289,89 +272,10 @@ function selectCover(
   return primeImplicants.filter((_, i) => (min & (1n << BigInt(i))) !== 0n);
 }
 
-// convert a single prime implicant to its LaTeX literal:
-// a product of literals for SOP, a (parenthesised) sum for POS
-function implicantLatex(
-  implicant: Implicant,
-  numVars: number,
-  isPOS: boolean,
-): string {
-  const term = [];
-
-  for (let i = numVars - 1; i >= 0; i--) {
-    const mask = 1 << i;
-
-    if ((implicant.dashes & mask) !== 0) {
-      continue;
-    } else if (((implicant.ones & mask) !== 0) !== isPOS) {
-      // if isPOS=true and (bit is 1)=false => x_i
-      // if isPOS=false and (bit is 1)=true => x_i
-      //
-      // => (bit is 1) !== isPOS => x_i
-      term.push(`x_{${i + 1}}`);
-    } else {
-      term.push(`\\overline{x_{${i + 1}}}`);
-    }
-  }
-  if (term.length === 0) {
-    return isPOS ? "0" : "1";
-  }
-
-  if (!isPOS) {
-    return term.join("\\,");
-  }
-  // a single-literal sum term needs no wrapping parentheses
-  return term.length === 1 ? term[0] : `(${term.join(" + ")})`;
-}
-
-function termsAndVars(
-  cells: CellState[][] | Table,
-  isPOS: boolean,
-): Terms & { numVars: number } {
-  if (cells instanceof Table) {
-    return { ...cells.toTerms(isPOS), numVars: cells.numVars };
-  }
-  return {
-    ...gridToTerms(cells, isPOS),
-    numVars: Math.log2(cells.length * cells[0].length),
-  };
-}
-
 // The minimal set of prime implicants (groups) chosen to cover the function.
 // For SOP these are groups of minterms; for POS, groups of maxterms.
-export function computeCover(
-  cells: CellState[][] | Table,
-  isPOS: boolean,
-): Implicant[] {
-  const { minMaxTerms, dontcares } = termsAndVars(cells, isPOS);
+export function computeCover(table: Table, isPOS: boolean): Implicant[] {
+  const { minMaxTerms, dontcares } = table.toTerms(isPOS);
   const implicants = findPrimeImplicants({ minMaxTerms, dontcares });
   return selectCover(implicants, minMaxTerms);
-}
-
-// The LaTeX literals of the minimized cover, one per group (an SOP product or a
-// POS sum term), or a single "1"/"0" when the function is constant.
-export function minimizedTerms(
-  cells: CellState[][] | Table,
-  isPOS: boolean,
-): string[] {
-  const { numVars } = termsAndVars(cells, isPOS);
-  const cover = computeCover(cells, isPOS);
-  if (cover.length === 0) {
-    // no implicants => function is always False (SOP) or always True (POS)
-    return [isPOS ? "1" : "0"];
-  }
-  return cover.map((implicant) => implicantLatex(implicant, numVars, isPOS));
-}
-
-// the join between cover terms: " + " for an SOP sum, juxtaposition for a POS product
-export function coverSeparator(isPOS: boolean): string {
-  return isPOS ? "\\," : " + ";
-}
-
-// convert a list of cells (or a Table) to a string expression (SOP or POS) in LaTeX format
-export default function computeExpression(
-  cells: CellState[][] | Table,
-  isPOS: boolean,
-): string {
-  return minimizedTerms(cells, isPOS).join(coverSeparator(isPOS));
 }

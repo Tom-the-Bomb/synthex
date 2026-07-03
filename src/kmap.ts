@@ -34,3 +34,22 @@ export function kmapDims(numVars: number): KMapDims {
 export function cellTerm(row: number, col: number, cols: number): number {
   return gray(row) * cols + gray(col);
 }
+
+// Indices in [0, count) that an implicant covers along one K-map axis: those
+// whose gray code matches the implicant's fixed bits, with dashed bits treated
+// as wildcards. `ones`/`dashes` are masked to the axis width internally.
+export function coveredIndices(
+  count: number,
+  ones: number,
+  dashes: number,
+): number[] {
+  const mask = count - 1;
+  const target = ones & mask;
+  const indices: number[] = [];
+  for (let i = 0; i < count; i++) {
+    if ((gray(i) & ~dashes & mask) === target) {
+      indices.push(i);
+    }
+  }
+  return indices;
+}
