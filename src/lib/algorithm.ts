@@ -76,22 +76,14 @@ export class Table {
   }
 }
 
-// count # of 1-bits
-function countOnes(x: number): number {
+// count # of 1-bits (popcount). Accepts a number (variable masks, <= 8 bits) or a
+// bigint (prime-implicant selection masks, which can exceed 32 bits).
+function countOnes(x: number | bigint): number {
+  let n = BigInt(x);
   let count = 0;
-  while (x) {
-    count += x & 1;
-    x >>= 1;
-  }
-  return count;
-}
-
-// count # of 1-bits in a bigint (cover bitmasks can exceed 32 bits)
-function countOnesBig(x: bigint): number {
-  let count = 0;
-  while (x) {
-    count += Number(x & 1n);
-    x >>= 1n;
+  while (n) {
+    count += Number(n & 1n);
+    n >>= 1n;
   }
   return count;
 }
@@ -255,8 +247,8 @@ function selectCover(
 
   // choose term out of SOP with least 1s => least PIs
   const min = sop.reduce((a, b) => {
-    const APICount = countOnesBig(a);
-    const BPICount = countOnesBig(b);
+    const APICount = countOnes(a);
+    const BPICount = countOnes(b);
 
     return APICount === BPICount
       ? numDashes(a) > numDashes(b)
