@@ -1,17 +1,25 @@
-import { useState } from "react";
+import { CornerDownLeft } from "lucide-react";
+import { useId, useState } from "react";
 
+import { Button } from "./ui/button";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
+import { Kbd } from "./ui/kbd";
 import type { CellState } from "../lib/cellState";
 import { parseExpression } from "../lib/parser";
+import { cn } from "../lib/utils";
 
 export default function ExpressionInput({
   numVars,
   onApply,
+  className,
 }: {
   numVars: number;
   onApply: (numVars: number, outputs: CellState[]) => void;
+  className?: string;
 }) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const id = useId();
 
   const submit = () => {
     try {
@@ -24,34 +32,43 @@ export default function ExpressionInput({
   };
 
   return (
-    <div className="flex flex-col gap-2 border border-dashed border-teal-800/60 bg-[#0c1f2c]/60 px-4 py-3">
-      <span className="text-[0.7rem] tracking-widest text-teal-400 uppercase">
-        Expression
-      </span>
-      <div className="flex flex-wrap gap-2">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              submit();
-            }
-          }}
-          placeholder="e.g. x1'x2' + x3"
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
-          className="min-w-0 flex-1 border border-teal-700/70 bg-[#0a1722] px-2 py-1.5 text-sm text-teal-100 placeholder:text-teal-700 focus:border-teal-500 focus:outline-none"
-        />
-        <button
-          onClick={submit}
-          className="shrink-0 border border-teal-700/70 px-3 py-1.5 text-[0.7rem] font-bold tracking-widest text-teal-300 uppercase transition-colors hover:bg-teal-400/10"
-        >
-          Load
-        </button>
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
+      <div className="flex gap-2">
+        <InputGroup className="bg-surface">
+          <InputGroupAddon className="font-normal max-sm:sr-only">
+            <label htmlFor={id}>Expression</label>
+          </InputGroupAddon>
+          <InputGroupInput
+            id={id}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                submit();
+              }
+            }}
+            placeholder="e.g. x1'x2' + x3"
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            aria-invalid={error !== null}
+            aria-describedby={error ? `${id}-error` : undefined}
+            className="font-mono"
+          />
+          <InputGroupAddon align="inline-end" className="max-sm:hidden">
+            <Kbd aria-hidden="true" title="Enter loads the expression">
+              <CornerDownLeft />
+            </Kbd>
+          </InputGroupAddon>
+        </InputGroup>
+        <Button onClick={submit}>Load</Button>
       </div>
       {error && (
-        <span className="text-[0.7rem] tracking-wide text-rose-400">
+        <span
+          id={`${id}-error`}
+          role="alert"
+          className="px-1 font-mono text-xs text-danger"
+        >
           {error}
         </span>
       )}

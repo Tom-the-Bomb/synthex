@@ -1,42 +1,41 @@
+import { ArrowLeftRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { lazy, Suspense, useState, type ReactNode } from "react";
 
 import { TermSet } from "./terms";
-import { Table, computeCover, type Implicant } from "../lib/algorithm";
+import { IconButton } from "./ui/icon-button";
+import { Segmented } from "./ui/segmented";
+import type { Implicant } from "../lib/algorithm";
 import { CellState, cellClasses } from "../lib/cellState";
 import { implicantLiterals } from "../lib/expression";
-import { bin, cellTerm, coveredIndices, gray, kmapDims } from "../lib/kmap";
+import { groupColor, groupInk, groupTint, type Mode } from "../lib/groups";
+import { bin, cellTerm, coveredCells, gray, kmapDims } from "../lib/kmap";
+import { useMediaQuery } from "../lib/media";
+import { cn } from "../lib/utils";
 
 const KMapSurface = lazy(() => import("./KMapSurface"));
 
-const CELL = 46;
 const GAP = 6;
-const CORNER = 54;
-const HEADER = 34;
-const ORIGIN_X = CORNER + GAP;
+const HEADER = 26;
 const ORIGIN_Y = HEADER + GAP;
 
-const SOP_COLORS = [
-  "#2563eb",
-  "#dc2626",
-  "#9333ea",
-  "#db2777",
-  "#0891b2",
-  "#15803d",
-  "#4f46e5",
-  "#e11d48",
-];
-const POS_COLORS = [
-  "#f87171",
-  "#38bdf8",
-  "#34d399",
-  "#c084fc",
-  "#fb923c",
-  "#f472b6",
-  "#a3e635",
-  "#22d3ee",
-];
+// The corner holds the column variables above its diagonal and the row
+// variables below; it widens until both clear the diagonal.
+function cornerWidth(colBits: number, rowBits: number): number {
+  if (colBits >= 3) {
+    return 76;
+  }
+  return rowBits >= 2 ? 56 : 48;
+}
 
-type Mode = "sop" | "pos" | "off";
+// Cells grow when the map has its own column, and shrink for the twice-as-wide
+// five-variable map.
+function cellSize(numVars: number, wide: boolean): number {
+  if (numVars >= 5) {
+    return wide ? 50 : 46;
+  }
+  return wide ? 70 : 58;
+}
+
 type View = "flat" | "3d";
 
 interface Loop {
@@ -49,63 +48,10 @@ interface Loop {
   height: number;
 }
 
-function Segmented<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  options: readonly T[];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <span className="mr-1 text-teal-500">{label}</span>
-      {options.map((option) => (
-        <button
-          key={option}
-          onClick={() => onChange(option)}
-          className={`rounded-sm border px-2 py-0.5 font-bold transition-colors ${
-            value === option
-              ? "border-amber-400/60 bg-amber-400/20 text-amber-200"
-              : "border-teal-800/60 text-teal-400 hover:bg-teal-400/10"
-          }`}
-        >
-          {option}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function StepButton({
-  dir,
-  onClick,
-}: {
-  dir: "prev" | "next";
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={dir === "prev" ? "previous group" : "next group"}
-      className="flex items-center rounded-sm border border-teal-800/60 px-2 py-1 text-teal-300 transition-colors hover:bg-teal-400/10"
-    >
-      <svg viewBox="0 0 10 10" className="h-2.5 w-2.5 fill-current">
-        <path d={dir === "prev" ? "M8 1 2 5 8 9Z" : "M2 1 8 5 2 9Z"} />
-      </svg>
-    </button>
-  );
-}
-
 function VarLabels({ hi, lo }: { hi: number; lo: number }) {
-  const vars = [];
-  for (let v = hi; v >= lo; v--) vars.push(v);
   return (
     <span className="inline-flex gap-0.5">
-      {vars.map((v) => (
+      {Array.from({ length: hi - lo + 1 }, (_, i) => hi - i).map((v) => (
         <span key={v}>
           x<sub>{v}</sub>
         </span>
@@ -127,42 +73,31 @@ function runs(indices: number[]): [number, number][] {
   return out;
 }
 
-function coveredCells(
-  group: Implicant,
-  rowCount: number,
-  colCount: number,
-  colBits: number,
-) {
-  return {
-    rows: coveredIndices(
-      rowCount,
-      group.ones >> colBits,
-      group.dashes >> colBits,
-    ),
-    cols: coveredIndices(colCount, group.ones, group.dashes),
-  };
-}
-
 function loops(
   groups: Implicant[],
   rowCount: number,
   colCount: number,
   colBits: number,
-  colors: string[],
+  isPOS: boolean,
+  cell: number,
+  corner: number,
 ): Loop[] {
+  const originX = corner + GAP;
+  // staggered insets, so overlapping groups nest instead of tracing each other
+  const step = cell >= 58 ? 4 : 2;
   return groups.flatMap((group, index) => {
     const { rows, cols } = coveredCells(group, rowCount, colCount, colBits);
-    const pad = 3 + (index % 3) * 3;
-    const color = colors[index % colors.length];
+    const pad = step + (index % 3) * step;
+    const color = groupColor(isPOS, index);
     return runs(rows).flatMap(([r0, r1]) =>
       runs(cols).map(([c0, c1]) => ({
         key: `${index}-${r0}-${c0}`,
         groupIndex: index,
         color,
-        left: ORIGIN_X + c0 * (CELL + GAP) + pad,
-        top: ORIGIN_Y + r0 * (CELL + GAP) + pad,
-        width: (c1 - c0 + 1) * CELL + (c1 - c0) * GAP - 2 * pad,
-        height: (r1 - r0 + 1) * CELL + (r1 - r0) * GAP - 2 * pad,
+        left: originX + c0 * (cell + GAP) + pad,
+        top: ORIGIN_Y + r0 * (cell + GAP) + pad,
+        width: (c1 - c0 + 1) * cell + (c1 - c0) * GAP - 2 * pad,
+        height: (r1 - r0 + 1) * cell + (r1 - r0) * GAP - 2 * pad,
       })),
     );
   });
@@ -187,22 +122,18 @@ function GroupExpression({
   );
 
   if (literals.length === 0) {
-    return <span className="mb-0.5">{isPOS ? "0" : "1"}</span>;
+    return <span>{isPOS ? "0" : "1"}</span>;
   }
 
   if (!isPOS) {
-    return <span className="mb-0.5 inline-flex gap-0.5">{literals}</span>;
+    return <span className="inline-flex gap-0.5">{literals}</span>;
   }
 
-  const sum: ReactNode[] = [];
-  literals.forEach((literal, i) => {
-    if (i > 0) {
-      sum.push(<span key={`plus-${i}`}> + </span>);
-    }
-    sum.push(literal);
-  });
+  const sum = literals.flatMap((literal, i) =>
+    i === 0 ? [literal] : [<span key={`plus-${i}`}> + </span>, literal],
+  );
   return (
-    <span className="mb-0.5 whitespace-nowrap">
+    <span className="whitespace-nowrap">
       {literals.length > 1 ? <>({sum})</> : sum}
     </span>
   );
@@ -212,44 +143,44 @@ export default function KMap({
   numVars,
   outputs,
   onToggle,
+  mode,
+  onModeChange,
+  groups,
+  selected: active,
+  onSelect,
 }: {
   numVars: number;
   outputs: CellState[];
   onToggle: (term: number) => void;
+  mode: Mode;
+  onModeChange: (mode: Mode) => void;
+  groups: Implicant[];
+  selected: number;
+  onSelect: (index: number) => void;
 }) {
-  const [mode, setMode] = useState<Mode>("sop");
   const [view, setView] = useState<View>("flat");
-  const [selected, setSelected] = useState(-1);
   const [showExpr, setShowExpr] = useState(false);
-  const dims = kmapDims(numVars);
-  const { rows, cols, rowBits, colBits } = dims;
-
-  const palette = mode === "pos" ? POS_COLORS : SOP_COLORS;
-  const table = new Table(outputs);
-  const groups = mode === "off" ? [] : computeCover(table, mode === "pos");
+  const { rows, cols, rowBits, colBits } = kmapDims(numVars);
+  const wide = useMediaQuery("(min-width: 80rem)");
+  const cell = cellSize(numVars, wide);
+  const corner = cornerWidth(colBits, rowBits);
+  const isPOS = mode === "pos";
 
   const groupCount = groups.length;
-  const active = selected >= 0 && selected < groupCount ? selected : -1;
-  const activeColor = palette[active % palette.length];
-  const activeTerms =
-    active >= 0 ? [...groups[active].covered].sort((a, b) => a - b) : [];
-  const activeCells = active >= 0 ? new Set(activeTerms) : null;
-  const step = (dir: number) =>
-    setSelected((prev) => {
-      const current = prev >= 0 && prev < groupCount ? prev : -1;
-      // Cycle through "all" (-1) plus each group, wrapping in both directions.
-      const count = groupCount + 1;
-      return ((current + 1 + dir + count) % count) - 1;
-    });
+  // cycles through "all" (-1) and each group, wrapping both ways
+  const step = (dir: number) => {
+    const count = groupCount + 1;
+    onSelect(((active + 1 + dir + count) % count) - 1);
+  };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.7rem] tracking-widest uppercase">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <Segmented
           label="Groups"
           value={mode}
           options={["sop", "pos", "off"]}
-          onChange={setMode}
+          onChange={onModeChange}
         />
         <Segmented
           label="View"
@@ -260,30 +191,30 @@ export default function KMap({
       </div>
 
       {view === "flat" && (
-        <div className="w-fit p-3">
+        <div className="scroll-slim flex justify-center-safe overflow-x-auto px-4 pt-3 pb-6">
           <div
-            className="relative"
+            className="relative w-fit shrink-0"
             style={{
               display: "grid",
-              gridTemplateColumns: `${CORNER}px repeat(${cols}, ${CELL}px)`,
-              gridTemplateRows: `${HEADER}px repeat(${rows}, ${CELL}px)`,
+              gridTemplateColumns: `${corner}px repeat(${cols}, ${cell}px)`,
+              gridTemplateRows: `${HEADER}px repeat(${rows}, ${cell}px)`,
               gap: GAP,
             }}
           >
             <div
-              className="relative text-[0.6rem] leading-none font-semibold text-teal-400"
+              className="relative font-mono text-[11px] leading-none text-fg-2"
               style={{
                 gridColumn: 1,
                 gridRow: 1,
                 backgroundImage:
-                  "linear-gradient(to top right, transparent calc(50% - 0.5px), rgba(45,212,191,0.4) calc(50% - 0.5px), rgba(45,212,191,0.4) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
+                  "linear-gradient(to top right, transparent calc(50% - 0.5px), var(--line-2) calc(50% - 0.5px), var(--line-2) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
               }}
             >
               <span className="absolute top-0 -right-1 whitespace-nowrap">
                 <VarLabels hi={colBits} lo={1} />
               </span>
               {rowBits > 0 && (
-                <span className="absolute bottom-1 left-0 whitespace-nowrap">
+                <span className="absolute bottom-0.5 left-0 whitespace-nowrap">
                   <VarLabels hi={numVars} lo={colBits + 1} />
                 </span>
               )}
@@ -292,7 +223,7 @@ export default function KMap({
             {Array.from({ length: cols }, (_, c) => (
               <div
                 key={`col-${c}`}
-                className="flex items-end justify-center text-xs font-bold tracking-widest text-amber-300/90"
+                className="flex items-end justify-center font-mono text-xs text-fg-2"
                 style={{ gridColumn: c + 2, gridRow: 1 }}
               >
                 {bin(gray(c), colBits)}
@@ -302,7 +233,7 @@ export default function KMap({
             {Array.from({ length: rows }, (_, r) => (
               <div
                 key={`row-${r}`}
-                className="flex items-center justify-end pr-1 text-xs font-bold tracking-widest text-amber-300/90"
+                className="flex items-center justify-end pr-2 font-mono text-xs text-fg-2"
                 style={{ gridColumn: 1, gridRow: r + 2 }}
               >
                 {rowBits > 0 ? bin(gray(r), rowBits) : ""}
@@ -311,27 +242,24 @@ export default function KMap({
 
             {Array.from({ length: rows }, (_, r) =>
               Array.from({ length: cols }, (_, c) => {
-                const term = cellTerm(r, c, dims.cols);
-                const ringed = activeCells?.has(term);
+                const term = cellTerm(r, c, cols);
+                const state = outputs[term];
                 return (
                   <button
                     key={`${r}-${c}`}
+                    type="button"
                     onClick={() => onToggle(term)}
                     title={`term ${term}`}
-                    style={{
-                      gridColumn: c + 2,
-                      gridRow: r + 2,
-                      ...(ringed
-                        ? {
-                            boxShadow: `0 0 0 3px ${activeColor}, 0 0 12px -2px ${activeColor}`,
-                            zIndex: 1,
-                          }
-                        : {}),
-                    }}
-                    className={`flex flex-col items-center justify-center rounded-sm text-lg font-bold transition-colors ${cellClasses(outputs[term])}`}
+                    aria-label={`term ${term}, ${state}`}
+                    style={{ gridColumn: c + 2, gridRow: r + 2 }}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1 rounded-lg border font-mono font-medium transition-colors duration-150",
+                      numVars >= 5 ? "text-lg" : "text-xl",
+                      cellClasses(state),
+                    )}
                   >
-                    <span className="leading-none">{outputs[term]}</span>
-                    <span className="text-[0.6rem] font-normal opacity-55">
+                    <span className="leading-none">{state}</span>
+                    <span className="text-[11px] leading-none font-normal opacity-80">
                       {term}
                     </span>
                   </button>
@@ -340,92 +268,110 @@ export default function KMap({
             )}
 
             <div className="pointer-events-none absolute inset-0">
-              {loops(groups, rows, cols, colBits, palette).map((loop) => {
-                const isActive = active >= 0 && loop.groupIndex === active;
-                const dimmed = active >= 0 && loop.groupIndex !== active;
-                return (
-                  <div
-                    key={loop.key}
-                    className="absolute rounded-lg transition-all"
-                    style={{
-                      left: loop.left,
-                      top: loop.top,
-                      width: loop.width,
-                      height: loop.height,
-                      border: `${isActive ? 3.5 : 2.5}px solid ${loop.color}`,
-                      backgroundColor: `${loop.color}${isActive ? "33" : "1f"}`,
-                      boxShadow: dimmed ? "none" : `0 0 6px -1px ${loop.color}`,
-                      opacity: dimmed ? 0.25 : 1,
-                    }}
-                  />
-                );
-              })}
+              {loops(groups, rows, cols, colBits, isPOS, cell, corner).map(
+                (loop) => {
+                  const isActive = loop.groupIndex === active;
+                  const dimmed = active >= 0 && !isActive;
+                  return (
+                    <div
+                      key={loop.key}
+                      className="absolute rounded-[11px] transition-[opacity,box-shadow,border-width] duration-150 ease-out"
+                      style={{
+                        left: loop.left,
+                        top: loop.top,
+                        width: loop.width,
+                        height: loop.height,
+                        border: `${isActive ? 3.5 : 2.5}px solid ${groupInk(loop.color)}`,
+                        // the ring carries selection; no fill, so 1-cells stay amber
+                        boxShadow: isActive
+                          ? `0 0 0 3px ${groupTint(loop.color, 22)}`
+                          : undefined,
+                        opacity: dimmed ? 0.4 : 1,
+                      }}
+                    />
+                  );
+                },
+              )}
             </div>
           </div>
+          {/* balances the row-label column so a narrow map's cells sit centred */}
+          {numVars <= 2 && (
+            <div
+              aria-hidden="true"
+              className="min-w-0 shrink"
+              style={{ width: corner + GAP }}
+            />
+          )}
         </div>
       )}
 
       {view === "3d" && (
-        <Suspense
-          fallback={
-            <div className="text-[0.7rem] tracking-widest text-teal-500">
-              loading 3D…
-            </div>
-          }
-        >
-          <KMapSurface
-            numVars={numVars}
-            outputs={outputs}
-            onToggle={onToggle}
-            groups={groups}
-            palette={palette}
-            active={active}
-          />
-        </Suspense>
+        <div className="px-4 pt-1 pb-4">
+          <Suspense
+            fallback={
+              <div className="mt-6 grid h-110 place-items-center rounded-lg border border-line bg-surface-2 text-xs text-fg-2">
+                loading 3D…
+              </div>
+            }
+          >
+            <KMapSurface
+              numVars={numVars}
+              outputs={outputs}
+              onToggle={onToggle}
+              groups={groups}
+              isPOS={isPOS}
+              active={active}
+            />
+          </Suspense>
+        </div>
       )}
 
       {groupCount > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.7rem] tracking-widest uppercase">
-          <div className="flex shrink-0 items-center gap-1">
-            <span className="mr-1 text-teal-500">Group</span>
-            <StepButton dir="prev" onClick={() => step(-1)} />
-            <span className="w-12 text-center font-bold text-amber-200">
-              {active < 0 ? "all" : `${active + 1}/${groupCount}`}
-            </span>
-            <StepButton dir="next" onClick={() => step(1)} />
+        <div className="mt-auto flex min-h-13 flex-wrap items-center gap-x-3 gap-y-2 border-t border-line px-4 py-2.5">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span className="mr-1 text-xs text-fg-2">Group</span>
+            <div className="flex items-center rounded-lg border border-line bg-surface-2 p-0.5">
+              <IconButton label="Previous group" onClick={() => step(-1)}>
+                <ChevronLeft />
+              </IconButton>
+              <span className="w-11 text-center font-mono text-xs text-fg">
+                {active < 0 ? "all" : `${active + 1}/${groupCount}`}
+              </span>
+              <IconButton label="Next group" onClick={() => step(1)}>
+                <ChevronRight />
+              </IconButton>
+            </div>
           </div>
           {active >= 0 && (
-            <div className="flex min-w-0 items-center gap-2 tracking-normal text-teal-300 normal-case">
+            <div className="flex min-w-0 items-center gap-2 text-sm">
               <span
-                className="shrink-0 font-bold"
-                style={{ color: activeColor }}
+                className="shrink-0 font-medium"
+                style={{ color: groupInk(groupColor(isPOS, active)) }}
               >
                 Group {active + 1}
               </span>
-              {showExpr ? (
-                <GroupExpression
-                  group={groups[active]}
-                  numVars={numVars}
-                  isPOS={mode === "pos"}
-                />
-              ) : (
-                <TermSet
-                  key={active}
-                  symbol={mode === "pos" ? "M" : "m"}
-                  terms={activeTerms}
-                  plain
-                />
-              )}
-              <button
+              <span className="min-w-0 font-mono text-fg">
+                {showExpr ? (
+                  <GroupExpression
+                    group={groups[active]}
+                    numVars={numVars}
+                    isPOS={isPOS}
+                  />
+                ) : (
+                  <TermSet
+                    key={active}
+                    symbol={isPOS ? "M" : "m"}
+                    terms={[...groups[active].covered].sort((a, b) => a - b)}
+                    plain
+                  />
+                )}
+              </span>
+              <IconButton
+                label={showExpr ? "Show terms" : "Show expression"}
                 onClick={() => setShowExpr((v) => !v)}
-                title={showExpr ? "show terms" : "show expression"}
-                aria-label={showExpr ? "show terms" : "show expression"}
-                className="shrink-0 rounded-sm border border-teal-800/60 px-1.5 py-1 text-teal-400 transition-colors hover:bg-teal-400/10"
               >
-                <svg viewBox="0 0 16 16" className="h-3 w-3 fill-current">
-                  <path d="M2 4H11V1L15 5L11 9V6H2Z M14 12H5V15L1 11L5 7V10H14Z" />
-                </svg>
-              </button>
+                <ArrowLeftRight />
+              </IconButton>
             </div>
           )}
         </div>

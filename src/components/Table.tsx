@@ -1,68 +1,118 @@
-import { CellState, cellClasses } from "../lib/cellState";
-import { bin } from "../lib/kmap";
+import type { Implicant } from "../lib/algorithm";
+import { type CellState, chipClasses } from "../lib/cellState";
+import { groupColor, groupInk, rowGroups } from "../lib/groups";
+import { cn } from "../lib/utils";
+
+export interface RowsProps {
+  numVars: number;
+  outputs: CellState[];
+  onToggle: (term: number) => void;
+  groups: Implicant[];
+  isPOS: boolean;
+  selected: number;
+}
+
+export function GroupDots({
+  covering,
+  isPOS,
+  className,
+}: {
+  covering: number[];
+  isPOS: boolean;
+  className?: string;
+}) {
+  return (
+    <span className={cn("flex gap-1", className)} aria-hidden="true">
+      {covering.map((i) => (
+        <span
+          key={i}
+          className="size-1.5 rounded-full"
+          style={{ backgroundColor: groupInk(groupColor(isPOS, i)) }}
+        />
+      ))}
+    </span>
+  );
+}
 
 export default function Table({
   numVars,
   outputs,
   onToggle,
-}: {
-  numVars: number;
-  outputs: CellState[];
-  onToggle: (term: number) => void;
-}) {
+  groups,
+  isPOS,
+  selected,
+}: RowsProps) {
   const vars = Array.from({ length: numVars }, (_, i) => numVars - i);
+  const groupsOf = rowGroups(groups, isPOS, selected);
 
   return (
-    <div className="scroll-slim max-h-112 overflow-auto">
-      <table className="w-full border-collapse text-center text-sm">
-        <thead className="sticky top-0 z-10 bg-[#0c1f2c] text-[0.7rem] tracking-widest text-teal-300/90 uppercase">
+    <div className="scroll-slim max-h-144 min-h-0 flex-1 overflow-auto lg:max-h-none">
+      {/* The header starts 2px above the scroller's edge (padding given back):
+          at fractional zoom a flush header can snap a device pixel low and let
+          scrolled rows show above it. */}
+      <table className="-mt-0.5 w-full border-separate border-spacing-0 text-center font-mono text-[13px]">
+        <thead className="sticky -top-0.5 z-10 bg-surface text-[11px] text-fg-2">
           <tr>
-            <th className="border-b border-teal-800/60 px-3 py-2 font-semibold text-amber-300/80">
+            <th className="border-b border-line pt-2.5 pb-2 pl-4 text-left font-medium">
               #
             </th>
             {vars.map((v) => (
               <th
                 key={v}
-                className="border-b border-teal-800/60 px-3 py-2 font-semibold"
+                className="border-b border-line px-1.5 pt-2.5 pb-2 font-medium"
               >
                 x<sub>{v}</sub>
               </th>
             ))}
-            <th className="border-b border-l border-teal-800/60 px-3 py-2 font-semibold">
+            <th className="border-b border-line pt-2.5 pr-4 pb-2 text-right font-medium">
               Out
             </th>
           </tr>
         </thead>
-        <tbody className="text-teal-100/90">
-          {outputs.map((state, term) => (
-            <tr
-              key={term}
-              className="border-b border-teal-900/40 last:border-0 hover:bg-teal-400/5"
-            >
-              <td className="px-3 py-1 font-bold text-amber-300/70 tabular-nums">
-                {term}
-              </td>
-              {bin(term, numVars)
-                .split("")
-                .map((b, i) => (
-                  <td
-                    key={i}
-                    className={`px-3 py-1 tabular-nums ${b === "1" ? "text-teal-200" : "text-teal-700"}`}
-                  >
-                    {b}
-                  </td>
-                ))}
-              <td className="border-l border-teal-900/40 p-1">
-                <button
-                  onClick={() => onToggle(term)}
-                  title={`term ${term}`}
-                  className={`w-9 rounded-sm py-1 font-bold transition-colors ${cellClasses(state)}`}
-                >
-                  {state}
-                </button>
-              </td>
-            </tr>
-          ))}
+        <tbody>
+          {outputs.map((state, term) => {
+            const { covering, tint } = groupsOf(term);
+            return (
+              <tr
+                key={term}
+                className="transition-colors duration-150 hover:bg-surface-2"
+                style={{ backgroundColor: tint }}
+              >
+                <td className="py-1 pl-4 text-left text-fg-3">{term}</td>
+                {vars.map((v) => {
+                  const bit = (term >> (v - 1)) & 1;
+                  return (
+                    <td
+                      key={v}
+                      className={cn(
+                        "px-1.5 py-1",
+                        bit ? "text-fg" : "text-fg-3",
+                      )}
+                    >
+                      {bit}
+                    </td>
+                  );
+                })}
+                <td className="py-1 pr-4">
+                  <span className="flex items-center justify-end gap-2.5">
+                    <GroupDots covering={covering} isPOS={isPOS} />
+                    <button
+                      type="button"
+                      onClick={() => onToggle(term)}
+                      title={`term ${term}`}
+                      aria-label={`term ${term}, ${state}`}
+                      className={cn(
+                        "h-5.5 w-8 rounded-md border text-xs font-semibold transition-colors duration-150",
+                        chipClasses(state),
+                      )}
+                    >
+                      {state}
+                    </button>
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

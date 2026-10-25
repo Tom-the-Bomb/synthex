@@ -20,10 +20,21 @@ export function toggleCellState(state: CellState): CellState {
 export function cellClasses(state: CellState): string {
   switch (state) {
     case CellState.True:
-      return "bg-amber-400 text-slate-950 border border-amber-300 shadow-[0_0_14px_-3px_rgba(251,191,36,0.7)] hover:bg-amber-300";
+      return "border-one-edge bg-one-soft text-one-fg hover:border-one";
     case CellState.False:
-      return "bg-sky-950 text-sky-200 border border-sky-700/70 hover:bg-sky-900 hover:border-sky-500";
+      return "border-line bg-surface-2 text-fg-2 hover:border-line-2 hover:text-fg";
     case CellState.Any:
-      return "bg-transparent text-teal-500/70 border border-dashed border-teal-600/60 hover:border-teal-400";
+      return "border-dashed border-fg-3 bg-surface text-fg-2 hover:border-fg-2 hover:text-fg";
+  }
+}
+
+export function chipClasses(state: CellState): string {
+  switch (state) {
+    case CellState.True:
+      return "border-one bg-one text-one-ink hover:brightness-105";
+    case CellState.False:
+      return "border-line-2 bg-transparent text-fg-2 hover:border-fg-3 hover:text-fg";
+    case CellState.Any:
+      return "border-dashed border-fg-3 bg-transparent text-fg-2 hover:text-fg";
   }
 }

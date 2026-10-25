@@ -1,89 +1,238 @@
 import type { ReactNode } from "react";
 
-import { Tex, TermSet, ExprSet } from "./terms";
-import { Table } from "../lib/algorithm";
-import type { CellState } from "../lib/cellState";
-import { minimizedTerms, coverSeparator } from "../lib/expression";
+import { Tex, TermChips, TermSet } from "./terms";
+import { CopyButton } from "./ui/copy-button";
+import type { Implicant, Table } from "../lib/algorithm";
+import { coverTerms, coverText, implicantLatex } from "../lib/expression";
+import { groupColor, groupInk, groupTint, type Mode } from "../lib/groups";
+import { cn } from "../lib/utils";
 
-const AMBER = "bg-amber-400/20 text-amber-200";
-const SKY = "bg-sky-400/15 text-sky-200";
-
+// Every answer line shares one size; an optional action sits flush right.
 function Row({
   tag,
-  tagClass,
+  action,
   children,
 }: {
   tag: string;
-  tagClass: string;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-baseline gap-3">
-      <span
-        className={`w-12 shrink-0 rounded-sm px-2 py-0.5 text-center text-[0.7rem] font-bold tracking-widest uppercase ${tagClass}`}
-      >
+    <div
+      className={cn(
+        "grid items-baseline gap-3 border-b border-line px-4 py-3 text-lg last:border-b-0",
+        action
+          ? "grid-cols-[2.75rem_minmax(0,1fr)_auto]"
+          : "grid-cols-[2.75rem_minmax(0,1fr)]",
+      )}
+    >
+      <span className="text-[11px] font-medium tracking-[0.06em] text-fg-2 uppercase">
         {tag}
       </span>
-      <div className="scroll-slim min-w-0 flex-1 overflow-x-auto py-1">
+      <div className="scroll-slim min-w-0 overflow-x-auto overflow-y-hidden py-1">
         {children}
       </div>
+      {action && <div className="flex self-start pt-0.5">{action}</div>}
     </div>
   );
 }
 
-export default function Output({ outputs }: { outputs: CellState[] }) {
-  const table = new Table(outputs);
-  const ones = table.minterms;
-  const zeros = table.maxterms;
-  const dashes = table.dontcares;
-  const hasDontCares = dashes.length > 0;
+// m(0, 4, 8, 12), shortened to head … tail so a group row stays one line.
+function shortList(symbol: string, terms: number[]): string {
+  const shown =
+    terms.length > 6 ? [...terms.slice(0, 3), "…", ...terms.slice(-2)] : terms;
+  return `${symbol}(${shown.join(", ")})`;
+}
+
+function GroupList({
+  groups,
+  numVars,
+  isPOS,
+  selected,
+  onSelect,
+}: {
+  groups: Implicant[];
+  numVars: number;
+  isPOS: boolean;
+  selected: number;
+  onSelect: (index: number) => void;
+}) {
+  return (
+    <div className="px-2 pt-3 pb-2">
+      <div className="flex items-baseline justify-between px-2 pb-2 text-xs text-fg-2">
+        <span className="font-medium">Groups</span>
+        <span className="font-mono">
+          {isPOS ? "POS" : "SOP"} · {groups.length}
+        </span>
+      </div>
+      <ul className="flex flex-col gap-0.5">
+        {groups.map((group, i) => {
+          const color = groupColor(isPOS, i);
+          const isSelected = selected === i;
+          const terms = [...group.covered].sort((a, b) => a - b);
+          return (
+            <li key={group.key()}>
+              <button
+                type="button"
+                onClick={() => onSelect(i)}
+                aria-pressed={isSelected}
+                className="grid w-full grid-cols-[0.625rem_1.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-[background-color,box-shadow] duration-150 ease-out hover:bg-surface-2"
+                style={
+                  isSelected
+                    ? {
+                        backgroundColor: groupTint(color, 10),
+                        boxShadow: `inset 0 0 0 1px ${groupTint(color, 42)}`,
+                      }
+                    : undefined
+                }
+              >
+                <span
+                  className="size-2.5 rounded-[3px]"
+                  style={{ backgroundColor: groupInk(color) }}
+                />
+                <span className="font-mono text-xs text-fg-2">{i + 1}</span>
+                <span
+                  className="min-w-0 truncate text-[0.95rem]"
+                  style={{ color: groupInk(color) }}
+                >
+                  <Tex tex={implicantLatex(group, numVars, isPOS)} />
+                </span>
+                <span className="font-mono text-xs whitespace-nowrap text-fg-2">
+                  {shortList(isPOS ? "M" : "m", terms)}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function CoverRow({
+  isPOS,
+  cover,
+  numVars,
+  active,
+  onSelect,
+}: {
+  isPOS: boolean;
+  cover: Implicant[];
+  numVars: number;
+  active: number;
+  onSelect: (index: number) => void;
+}) {
+  const tag = isPOS ? "POS" : "SOP";
+  return (
+    <Row
+      tag={tag}
+      action={
+        <CopyButton
+          text={coverText(cover, numVars, isPOS)}
+          label={`Copy ${tag} as text`}
+        />
+      }
+    >
+      <TermChips
+        prefix="f = \;"
+        terms={coverTerms(cover, numVars, isPOS)}
+        sep={isPOS ? "\\," : "\\:+\\:"}
+        colors={cover.map((_, i) => groupColor(isPOS, i))}
+        active={active}
+        onSelect={onSelect}
+      />
+    </Row>
+  );
+}
+
+// The prefix hangs like SOP/POS, so wrapped term lists line up under m(.
+function CanonicalRow({
+  isMax,
+  terms,
+  dontCares,
+}: {
+  isMax: boolean;
+  terms: number[];
+  dontCares: number[];
+}) {
+  return (
+    <Row tag={isMax ? "Max" : "Min"}>
+      <span className="flex items-baseline">
+        <Tex
+          tex={isMax ? "f = \\textstyle\\prod" : "f = \\textstyle\\sum"}
+          className="whitespace-nowrap"
+        />
+        <span className="min-w-0">
+          <TermSet symbol={isMax ? "\\,M" : "\\,m"} terms={terms} />
+          {dontCares.length > 0 && (
+            <>
+              <Tex
+                tex={
+                  isMax
+                    ? "\\,\\cdot \\textstyle\\prod"
+                    : "\\,+ \\textstyle\\sum"
+                }
+              />
+              <TermSet symbol="\,d" terms={dontCares} />
+            </>
+          )}
+        </span>
+      </span>
+    </Row>
+  );
+}
+
+export default function Output({
+  table,
+  sopCover,
+  posCover,
+  groups,
+  mode,
+  selected,
+  onSelect,
+}: {
+  table: Table;
+  sopCover: Implicant[];
+  posCover: Implicant[];
+  groups: Implicant[];
+  mode: Mode;
+  selected: number;
+  onSelect: (isPOS: boolean, index: number) => void;
+}) {
+  const { numVars } = table;
+  const isPOS = mode === "pos";
 
   return (
-    <div className="flex flex-col gap-3 text-teal-100">
-      <Row tag="Min" tagClass={AMBER}>
-        <span className="whitespace-nowrap">
-          <Tex tex="f = \textstyle\sum" className="text-lg" />
-          <TermSet symbol="\,m" terms={ones} className="text-lg" />
-          {hasDontCares && (
-            <>
-              <Tex tex="\,+ \textstyle\sum" className="text-lg" />
-              <TermSet symbol="\,d" terms={dashes} className="text-lg" />
-            </>
-          )}
-        </span>
-      </Row>
-
-      <Row tag="Max" tagClass={SKY}>
-        <span className="whitespace-nowrap">
-          <Tex tex="f = \textstyle\prod" className="text-lg" />
-          <TermSet symbol="\,M" terms={zeros} className="text-lg" />
-          {hasDontCares && (
-            <>
-              <Tex tex="\,\cdot \textstyle\prod" className="text-lg" />
-              <TermSet symbol="\,d" terms={dashes} className="text-lg" />
-            </>
-          )}
-        </span>
-      </Row>
-
-      <div className="mt-1 flex flex-col gap-3 border-t border-dashed border-teal-800/60 pt-3">
-        <Row tag="SOP" tagClass={AMBER}>
-          <ExprSet
-            prefix="f = "
-            terms={minimizedTerms(table, false)}
-            sep={coverSeparator(false)}
-            className="text-lg"
-          />
-        </Row>
-        <Row tag="POS" tagClass={SKY}>
-          <ExprSet
-            prefix="f = "
-            terms={minimizedTerms(table, true)}
-            sep={coverSeparator(true)}
-            className="text-lg"
-          />
-        </Row>
-      </div>
+    <div className="flex flex-col">
+      <CoverRow
+        isPOS={false}
+        cover={sopCover}
+        numVars={numVars}
+        active={mode === "sop" ? selected : -1}
+        onSelect={(i) => onSelect(false, i)}
+      />
+      <CoverRow
+        isPOS
+        cover={posCover}
+        numVars={numVars}
+        active={isPOS ? selected : -1}
+        onSelect={(i) => onSelect(true, i)}
+      />
+      <CanonicalRow
+        isMax={false}
+        terms={table.minterms}
+        dontCares={table.dontcares}
+      />
+      <CanonicalRow isMax terms={table.maxterms} dontCares={table.dontcares} />
+      {groups.length > 0 && (
+        <GroupList
+          groups={groups}
+          numVars={numVars}
+          isPOS={isPOS}
+          selected={selected}
+          onSelect={(i) => onSelect(isPOS, i)}
+        />
+      )}
     </div>
   );
 }

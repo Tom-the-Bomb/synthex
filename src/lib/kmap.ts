@@ -1,3 +1,5 @@
+import type { Implicant } from "./algorithm";
+
 export const MAX_KMAP_VARS = 5;
 // The truth-table variable cap (the largest function the app will build).
 export const MAX_VARS = 8;
@@ -38,11 +40,7 @@ export function cellTerm(row: number, col: number, cols: number): number {
 // Indices in [0, count) that an implicant covers along one K-map axis: those
 // whose gray code matches the implicant's fixed bits, with dashed bits treated
 // as wildcards. `ones`/`dashes` are masked to the axis width internally.
-export function coveredIndices(
-  count: number,
-  ones: number,
-  dashes: number,
-): number[] {
+function coveredIndices(count: number, ones: number, dashes: number): number[] {
   const mask = count - 1;
   const target = ones & mask;
   const indices: number[] = [];
@@ -52,4 +50,18 @@ export function coveredIndices(
     }
   }
   return indices;
+}
+
+// The rows and columns of a map (with `colBits` column variables) that a group
+// covers.
+export function coveredCells(
+  group: Implicant,
+  rows: number,
+  cols: number,
+  colBits: number,
+) {
+  return {
+    rows: coveredIndices(rows, group.ones >> colBits, group.dashes >> colBits),
+    cols: coveredIndices(cols, group.ones, group.dashes),
+  };
 }

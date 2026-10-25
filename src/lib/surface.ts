@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import type { Implicant } from "./algorithm";
-import { coveredIndices, gray } from "./kmap";
+import { coveredCells, gray } from "./kmap";
 
 export type Topology = "flat" | "cylinder" | "torus" | "twoTorus";
 
@@ -256,6 +256,7 @@ export function cellLayouts(spec: SurfaceSpec): CellLayout[] {
 }
 
 export interface BandLayout {
+  id: string; // the implicant and half, stable while the group stays in the cover
   groupIndex: number;
   half: number;
   u0: number;
@@ -275,11 +276,11 @@ export function bandLayouts(
   const bands: BandLayout[] = [];
 
   groups.forEach((group, groupIndex) => {
-    const coveredCols = coveredIndices(cols, group.ones, group.dashes);
-    const coveredRows = coveredIndices(
+    const { rows: coveredRows, cols: coveredCols } = coveredCells(
+      group,
       rows,
-      group.ones >> colBits,
-      group.dashes >> colBits,
+      cols,
+      colBits,
     );
 
     const eOnes = (group.ones >> eBit) & 1;
@@ -294,6 +295,7 @@ export function bandLayouts(
 
     for (const half of halves) {
       bands.push({
+        id: `${group.key()}/${half}`,
         groupIndex,
         half,
         u0: colRun.start * du + du * BAND_GAP,
