@@ -96,7 +96,7 @@ function HoverTip({ store, numVars }: { store: TipStore; numVars: number }) {
   return (
     <div
       ref={ref}
-      className="pointer-events-none absolute top-0 left-0 z-10 rounded-md bg-foreground px-3 py-1.5 font-mono text-xs whitespace-nowrap text-background"
+      className="pointer-events-none absolute top-0 left-0 z-10 rounded-md bg-tooltip px-3 py-1.5 font-mono text-xs whitespace-nowrap text-tooltip-fg"
     >
       <span className="font-medium">m{tip.term}</span>
       <span className="ml-2 opacity-70">
