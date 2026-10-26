@@ -72,7 +72,6 @@ export function coverTerms(
   numVars: number,
   isPOS: boolean,
 ): string[] {
-  // no implicants => function is always False (SOP) or always True (POS)
   if (cover.length === 0) {
     return [isPOS ? "1" : "0"];
   }

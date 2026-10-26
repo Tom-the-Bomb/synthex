@@ -4,7 +4,13 @@ import { Tex, TermChips, TermSet } from "./terms";
 import { CopyButton } from "./ui/copy-button";
 import type { Implicant, Table } from "../lib/algorithm";
 import { coverTerms, coverText, implicantLatex } from "../lib/expression";
-import { groupColor, groupInk, groupTint, type Mode } from "../lib/groups";
+import {
+  groupColor,
+  groupInk,
+  groupText,
+  groupTint,
+  type Mode,
+} from "../lib/groups";
 import { cn } from "../lib/utils";
 
 // Every answer line shares one size; an optional action sits flush right.
@@ -26,7 +32,7 @@ function Row({
           : "grid-cols-[2.75rem_minmax(0,1fr)]",
       )}
     >
-      <span className="text-[11px] font-medium tracking-[0.06em] text-fg-2 uppercase">
+      <span className="text-[0.6875rem] font-medium tracking-[0.06em] text-fg-2 uppercase">
         {tag}
       </span>
       <div className="scroll-slim min-w-0 overflow-x-auto overflow-y-hidden py-1">
@@ -69,7 +75,6 @@ function GroupList({
         {groups.map((group, i) => {
           const color = groupColor(isPOS, i);
           const isSelected = selected === i;
-          const terms = [...group.covered].sort((a, b) => a - b);
           return (
             <li key={group.key()}>
               <button
@@ -93,12 +98,12 @@ function GroupList({
                 <span className="font-mono text-xs text-fg-2">{i + 1}</span>
                 <span
                   className="min-w-0 truncate text-[0.95rem]"
-                  style={{ color: groupInk(color) }}
+                  style={{ color: groupText(color) }}
                 >
                   <Tex tex={implicantLatex(group, numVars, isPOS)} />
                 </span>
                 <span className="font-mono text-xs whitespace-nowrap text-fg-2">
-                  {shortList(isPOS ? "M" : "m", terms)}
+                  {shortList(isPOS ? "M" : "m", group.covered)}
                 </span>
               </button>
             </li>
@@ -113,13 +118,13 @@ function CoverRow({
   isPOS,
   cover,
   numVars,
-  active,
+  selected,
   onSelect,
 }: {
   isPOS: boolean;
   cover: Implicant[];
   numVars: number;
-  active: number;
+  selected: number;
   onSelect: (index: number) => void;
 }) {
   const tag = isPOS ? "POS" : "SOP";
@@ -138,7 +143,7 @@ function CoverRow({
         terms={coverTerms(cover, numVars, isPOS)}
         sep={isPOS ? "\\," : "\\:+\\:"}
         colors={cover.map((_, i) => groupColor(isPOS, i))}
-        active={active}
+        selected={selected}
         onSelect={onSelect}
       />
     </Row>
@@ -208,14 +213,14 @@ export default function Output({
         isPOS={false}
         cover={sopCover}
         numVars={numVars}
-        active={mode === "sop" ? selected : -1}
+        selected={mode === "sop" ? selected : -1}
         onSelect={(i) => onSelect(false, i)}
       />
       <CoverRow
         isPOS
         cover={posCover}
         numVars={numVars}
-        active={isPOS ? selected : -1}
+        selected={isPOS ? selected : -1}
         onSelect={(i) => onSelect(true, i)}
       />
       <CanonicalRow

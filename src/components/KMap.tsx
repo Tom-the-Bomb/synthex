@@ -1,22 +1,64 @@
 import { ArrowLeftRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { lazy, Suspense, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useState, type ReactNode } from "react";
 
 import { TermSet } from "./terms";
+import { Button } from "./ui/button";
 import { IconButton } from "./ui/icon-button";
 import { Segmented } from "./ui/segmented";
 import type { Implicant } from "../lib/algorithm";
 import { CellState, cellClasses } from "../lib/cellState";
 import { implicantLiterals } from "../lib/expression";
-import { groupColor, groupInk, groupTint, type Mode } from "../lib/groups";
+import {
+  groupColor,
+  groupInk,
+  groupText,
+  groupTint,
+  type Mode,
+} from "../lib/groups";
 import { bin, cellTerm, coveredCells, gray, kmapDims } from "../lib/kmap";
-import { useMediaQuery } from "../lib/media";
+import { remScale, useMediaQuery, useWidth } from "../lib/media";
 import { cn } from "../lib/utils";
 
 const KMapSurface = lazy(() => import("./KMapSurface"));
 
+// three.js needs WebGL 2; without it the canvas fails silently, so check first
+let webgl: boolean | undefined;
+function hasWebGL(): boolean {
+  if (webgl === undefined) {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    webgl = gl !== null;
+  }
+  return webgl;
+}
+
+// Keeps a failed 3D load (offline, or a stale deploy) from unmounting the app.
+class LoadBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+// The 3D canvas's footprint, for its loading and failure states.
+function Well({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-6 grid h-canvas place-content-center justify-items-center gap-3 rounded-lg border border-line bg-surface-2 px-6 text-center text-xs text-fg-2">
+      {children}
+    </div>
+  );
+}
+
+// Geometry in px at the default text size; it scales with the user's text size.
 const GAP = 6;
 const HEADER = 26;
-const ORIGIN_Y = HEADER + GAP;
+const MIN_CELL = 40; // smallest a cell shrinks to fit a narrow phone
 
 // The corner holds the column variables above its diagonal and the row
 // variables below; it widens until both clear the diagonal.
@@ -73,31 +115,37 @@ function runs(indices: number[]): [number, number][] {
   return out;
 }
 
+interface Geometry {
+  cell: number;
+  gap: number;
+  corner: number;
+  header: number;
+  inset: number; // loop inset step, staggered so overlapping groups nest
+}
+
 function loops(
   groups: Implicant[],
   rowCount: number,
   colCount: number,
   colBits: number,
   isPOS: boolean,
-  cell: number,
-  corner: number,
+  { cell, gap, corner, header, inset }: Geometry,
 ): Loop[] {
-  const originX = corner + GAP;
-  // staggered insets, so overlapping groups nest instead of tracing each other
-  const step = cell >= 58 ? 4 : 2;
+  const originX = corner + gap;
+  const originY = header + gap;
   return groups.flatMap((group, index) => {
     const { rows, cols } = coveredCells(group, rowCount, colCount, colBits);
-    const pad = step + (index % 3) * step;
+    const pad = inset + (index % 3) * inset;
     const color = groupColor(isPOS, index);
     return runs(rows).flatMap(([r0, r1]) =>
       runs(cols).map(([c0, c1]) => ({
         key: `${index}-${r0}-${c0}`,
         groupIndex: index,
         color,
-        left: originX + c0 * (cell + GAP) + pad,
-        top: ORIGIN_Y + r0 * (cell + GAP) + pad,
-        width: (c1 - c0 + 1) * cell + (c1 - c0) * GAP - 2 * pad,
-        height: (r1 - r0 + 1) * cell + (r1 - r0) * GAP - 2 * pad,
+        left: originX + c0 * (cell + gap) + pad,
+        top: originY + r0 * (cell + gap) + pad,
+        width: (c1 - c0 + 1) * cell + (c1 - c0) * gap - 2 * pad,
+        height: (r1 - r0 + 1) * cell + (r1 - r0) * gap - 2 * pad,
       })),
     );
   });
@@ -146,7 +194,7 @@ export default function KMap({
   mode,
   onModeChange,
   groups,
-  selected: active,
+  selected,
   onSelect,
 }: {
   numVars: number;
@@ -162,15 +210,30 @@ export default function KMap({
   const [showExpr, setShowExpr] = useState(false);
   const { rows, cols, rowBits, colBits } = kmapDims(numVars);
   const wide = useMediaQuery("(min-width: 80rem)");
-  const cell = cellSize(numVars, wide);
-  const corner = cornerWidth(colBits, rowBits);
+  const [mapRef, room] = useWidth<HTMLDivElement>(Infinity);
+  const unit = remScale();
+  const gap = GAP * unit;
+  const corner = cornerWidth(colBits, rowBits) * unit;
+  // shrink cells to fit the pane when they can stay usable; otherwise scroll
+  const fit = Math.floor((room - corner) / cols - gap);
+  const cell = Math.min(
+    cellSize(numVars, wide) * unit,
+    fit >= MIN_CELL * unit ? fit : Infinity,
+  );
+  const geometry: Geometry = {
+    cell,
+    gap,
+    corner,
+    header: HEADER * unit,
+    inset: (cell >= 58 * unit ? 4 : 2) * unit,
+  };
   const isPOS = mode === "pos";
 
   const groupCount = groups.length;
   // cycles through "all" (-1) and each group, wrapping both ways
   const step = (dir: number) => {
     const count = groupCount + 1;
-    onSelect(((active + 1 + dir + count) % count) - 1);
+    onSelect(((selected + 1 + dir + count) % count) - 1);
   };
 
   return (
@@ -191,21 +254,21 @@ export default function KMap({
       </div>
 
       {view === "flat" && (
-        <div className="scroll-slim flex justify-center-safe overflow-x-auto px-4 pt-3 pb-6">
+        <div
+          ref={mapRef}
+          className="scroll-slim flex justify-center-safe overflow-x-auto px-4 pt-3 pb-6"
+        >
           <div
-            className="relative w-fit shrink-0"
+            className="relative grid w-fit shrink-0"
             style={{
-              display: "grid",
               gridTemplateColumns: `${corner}px repeat(${cols}, ${cell}px)`,
-              gridTemplateRows: `${HEADER}px repeat(${rows}, ${cell}px)`,
-              gap: GAP,
+              gridTemplateRows: `${geometry.header}px repeat(${rows}, ${cell}px)`,
+              gap,
             }}
           >
             <div
-              className="relative font-mono text-[11px] leading-none text-fg-2"
+              className="relative col-start-1 row-start-1 font-mono text-[0.6875rem] leading-none text-fg-2"
               style={{
-                gridColumn: 1,
-                gridRow: 1,
                 backgroundImage:
                   "linear-gradient(to top right, transparent calc(50% - 0.5px), var(--line-2) calc(50% - 0.5px), var(--line-2) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
               }}
@@ -259,7 +322,7 @@ export default function KMap({
                     )}
                   >
                     <span className="leading-none">{state}</span>
-                    <span className="text-[11px] leading-none font-normal opacity-80">
+                    <span className="text-[0.6875rem] leading-none font-normal opacity-80">
                       {term}
                     </span>
                   </button>
@@ -268,22 +331,22 @@ export default function KMap({
             )}
 
             <div className="pointer-events-none absolute inset-0">
-              {loops(groups, rows, cols, colBits, isPOS, cell, corner).map(
+              {loops(groups, rows, cols, colBits, isPOS, geometry).map(
                 (loop) => {
-                  const isActive = loop.groupIndex === active;
-                  const dimmed = active >= 0 && !isActive;
+                  const isSelected = loop.groupIndex === selected;
+                  const dimmed = selected >= 0 && !isSelected;
                   return (
                     <div
                       key={loop.key}
-                      className="absolute rounded-[11px] transition-[opacity,box-shadow,border-width] duration-150 ease-out"
+                      className="absolute rounded-[0.6875rem] transition-[opacity,box-shadow,border-width] duration-150 ease-out"
                       style={{
                         left: loop.left,
                         top: loop.top,
                         width: loop.width,
                         height: loop.height,
-                        border: `${isActive ? 3.5 : 2.5}px solid ${groupInk(loop.color)}`,
+                        border: `${isSelected ? 3.5 : 2.5}px solid ${groupInk(loop.color)}`,
                         // the ring carries selection; no fill, so 1-cells stay amber
-                        boxShadow: isActive
+                        boxShadow: isSelected
                           ? `0 0 0 3px ${groupTint(loop.color, 22)}`
                           : undefined,
                         opacity: dimmed ? 0.4 : 1,
@@ -299,7 +362,7 @@ export default function KMap({
             <div
               aria-hidden="true"
               className="min-w-0 shrink"
-              style={{ width: corner + GAP }}
+              style={{ width: corner + gap }}
             />
           )}
         </div>
@@ -307,22 +370,39 @@ export default function KMap({
 
       {view === "3d" && (
         <div className="px-4 pt-1 pb-4">
-          <Suspense
-            fallback={
-              <div className="mt-6 grid h-110 place-items-center rounded-lg border border-line bg-surface-2 text-xs text-fg-2">
-                loading 3D…
-              </div>
-            }
-          >
-            <KMapSurface
-              numVars={numVars}
-              outputs={outputs}
-              onToggle={onToggle}
-              groups={groups}
-              isPOS={isPOS}
-              active={active}
-            />
-          </Suspense>
+          {hasWebGL() ? (
+            <LoadBoundary
+              fallback={
+                <Well>
+                  The 3D view couldn&rsquo;t load. Check your connection, then
+                  reload the page.
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => location.reload()}
+                  >
+                    Reload
+                  </Button>
+                </Well>
+              }
+            >
+              <Suspense fallback={<Well>loading 3D…</Well>}>
+                <KMapSurface
+                  numVars={numVars}
+                  outputs={outputs}
+                  onToggle={onToggle}
+                  groups={groups}
+                  isPOS={isPOS}
+                  selected={selected}
+                />
+              </Suspense>
+            </LoadBoundary>
+          ) : (
+            <Well>
+              The 3D view needs WebGL 2, which this browser doesn&rsquo;t
+              provide. The flat map shows the same groups.
+            </Well>
+          )}
         </div>
       )}
 
@@ -335,33 +415,33 @@ export default function KMap({
                 <ChevronLeft />
               </IconButton>
               <span className="w-11 text-center font-mono text-xs text-fg">
-                {active < 0 ? "all" : `${active + 1}/${groupCount}`}
+                {selected < 0 ? "all" : `${selected + 1}/${groupCount}`}
               </span>
               <IconButton label="Next group" onClick={() => step(1)}>
                 <ChevronRight />
               </IconButton>
             </div>
           </div>
-          {active >= 0 && (
+          {selected >= 0 && (
             <div className="flex min-w-0 items-center gap-2 text-sm">
               <span
                 className="shrink-0 font-medium"
-                style={{ color: groupInk(groupColor(isPOS, active)) }}
+                style={{ color: groupText(groupColor(isPOS, selected)) }}
               >
-                Group {active + 1}
+                Group {selected + 1}
               </span>
               <span className="min-w-0 font-mono text-fg">
                 {showExpr ? (
                   <GroupExpression
-                    group={groups[active]}
+                    group={groups[selected]}
                     numVars={numVars}
                     isPOS={isPOS}
                   />
                 ) : (
                   <TermSet
-                    key={active}
+                    key={selected}
                     symbol={isPOS ? "M" : "m"}
-                    terms={[...groups[active].covered].sort((a, b) => a - b)}
+                    terms={groups[selected].covered}
                     plain
                   />
                 )}

@@ -17,7 +17,10 @@ export function IconButton({
           variant="ghost"
           size="icon"
           aria-label={label}
-          className={cn("size-7 text-muted-foreground", className)}
+          className={cn(
+            "relative size-7 text-muted-foreground pointer-coarse:after:absolute pointer-coarse:after:-inset-2",
+            className,
+          )}
           {...props}
         />
       </TooltipTrigger>

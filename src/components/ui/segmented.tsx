@@ -16,7 +16,7 @@ export function Segmented<T extends string>({
 }) {
   const id = useId();
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <span id={id} className="text-xs text-fg-2">
         {label}
       </span>

@@ -1,11 +1,14 @@
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useId } from "react";
 
 import { GroupDots, type RowsProps } from "./Table";
 import { CellState } from "../lib/cellState";
 import { rowGroups } from "../lib/groups";
+import { remScale, useWidth } from "../lib/media";
 import { cn } from "../lib/utils";
 
-const ROW = 30; // px, matches the table's row pitch
+// px at the default text size; they scale with the user's text size
+const ROW = 30; // matches the table's row pitch
+const LANE = 20; // narrowest an input lane gets
 const PAD = 5; // inset of the low/high rails inside a lane
 const OUT = 52; // width of the Out lane
 
@@ -20,40 +23,32 @@ export default function Timing({
   isPOS,
   selected,
 }: RowsProps) {
+  const unit = remScale();
+  const row = ROW * unit;
+  const pad = Math.round(PAD * unit);
+  const out = Math.round(OUT * unit);
   const hatch = useId();
-  const columns = `2.75rem minmax(${numVars * 20}px, 1fr) ${OUT}px 2.75rem`;
-  const minWidth = `calc(5.5rem + ${numVars * 20 + OUT}px)`;
+  const columns = `2.75rem minmax(${numVars * LANE * unit}px, 1fr) ${out}px 2.75rem`;
+  const minWidth = `calc(5.5rem + ${(numVars * LANE + OUT) * unit}px)`;
 
   // Waves are drawn in real pixels at the lanes' measured width, each rail on a
   // pixel centre with crispEdges: scaling a fixed viewBox by a fractional factor
   // made identical strokes render at different weights.
-  const lanesRef = useRef<HTMLSpanElement>(null);
-  const [lanesWidth, setLanesWidth] = useState(numVars * 32);
-  useLayoutEffect(() => {
-    const el = lanesRef.current;
-    if (!el) {
-      return;
-    }
-    const observer = new ResizeObserver(([entry]) =>
-      setLanesWidth(Math.floor(entry.contentRect.width)),
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  const [lanesRef, lanesWidth] = useWidth<HTMLSpanElement>(numVars * 32);
   const lane = lanesWidth / numVars;
   const vars = Array.from({ length: numVars }, (_, i) => numVars - i);
   const groupsOf = rowGroups(groups, isPOS, selected);
 
   const rail = (i: number, high: boolean) =>
     high
-      ? Math.round((i + 1) * lane - PAD) - 0.5
-      : Math.round(i * lane + PAD) + 0.5;
+      ? Math.round((i + 1) * lane - pad) - 0.5
+      : Math.round(i * lane + pad) + 0.5;
   const outX = (state: CellState) =>
     state === CellState.True
-      ? OUT - PAD
+      ? out - pad
       : state === CellState.Any
-        ? OUT / 2
-        : PAD;
+        ? out / 2
+        : pad;
 
   // The header sits outside the row scroller (a sticky one let a slice of rows
   // show above it); both reserve the same scrollbar gutter to stay aligned.
@@ -81,7 +76,7 @@ export default function Timing({
       </svg>
 
       <div
-        className="grid shrink-0 [scrollbar-gutter:stable] overflow-hidden border-b border-line py-2 font-mono text-[11px] font-medium text-fg-2"
+        className="grid shrink-0 scrollbar-gutter-stable overflow-hidden border-b border-line py-2 font-mono text-[0.6875rem] font-medium text-fg-2"
         style={{ gridTemplateColumns: columns, minWidth }}
       >
         <span className="pl-4">#</span>
@@ -97,11 +92,11 @@ export default function Timing({
       </div>
 
       <div
-        className="scroll-slim min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto"
+        className="scroll-slim min-h-0 flex-1 scrollbar-gutter-stable overflow-y-auto"
         style={{ minWidth }}
       >
         {outputs.map((state, term) => {
-          const { covering, tint } = groupsOf(term);
+          const { covering, shade } = groupsOf(term);
           const prevState = term > 0 ? outputs[term - 1] : state;
           const fx = outX(state);
           const px = outX(prevState);
@@ -111,17 +106,17 @@ export default function Timing({
               className="grid shadow-[inset_0_-1px_0_var(--line)] transition-colors duration-150 hover:bg-surface-2"
               style={{
                 gridTemplateColumns: columns,
-                height: ROW,
-                backgroundColor: tint,
+                height: row,
+                ...shade,
               }}
             >
-              <span className="self-center pl-4 font-mono text-[13px] text-fg-3">
+              <span className="self-center pl-4 font-mono text-[0.8125rem] text-fg-3">
                 {term}
               </span>
 
               <svg
                 width={lanesWidth}
-                height={ROW}
+                height={row}
                 aria-hidden="true"
                 className="fill-none stroke-fg-2"
                 strokeWidth="1"
@@ -134,7 +129,7 @@ export default function Timing({
                   const wasHigh = term > 0 && (((term - 1) >> bit) & 1) === 1;
                   const x = rail(i, high);
                   const xp = term > 0 ? rail(i, wasHigh) : x;
-                  return <path key={bit} d={`M${xp} 0.5H${x}M${x} 0V${ROW}`} />;
+                  return <path key={bit} d={`M${xp} 0.5H${x}M${x} 0V${row}`} />;
                 })}
               </svg>
 
@@ -146,8 +141,8 @@ export default function Timing({
                 className="rounded-sm transition-colors duration-150 hover:bg-surface-3"
               >
                 <svg
-                  width={OUT}
-                  height={ROW}
+                  width={out}
+                  height={row}
                   aria-hidden="true"
                   className="fill-none stroke-fg"
                   shapeRendering="crispEdges"
@@ -156,10 +151,10 @@ export default function Timing({
                 >
                   {state !== CellState.False && (
                     <rect
-                      x={PAD}
+                      x={pad}
                       y="0"
-                      width={OUT - 2 * PAD}
-                      height={ROW}
+                      width={out - 2 * pad}
+                      height={row}
                       fill={
                         state === CellState.Any ? `url(#${hatch})` : undefined
                       }
@@ -169,7 +164,7 @@ export default function Timing({
                       )}
                     />
                   )}
-                  <path d={`M${px} 1H${fx}M${fx} 0V${ROW}`} />
+                  <path d={`M${px} 1H${fx}M${fx} 0V${row}`} />
                 </svg>
               </button>
 

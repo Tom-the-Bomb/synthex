@@ -1,9 +1,9 @@
 import * as THREE from "three";
 
 import type { Implicant } from "./algorithm";
-import { coveredCells, gray } from "./kmap";
+import { coveredCells, gray, kmapDims } from "./kmap";
 
-export type Topology = "flat" | "cylinder" | "torus" | "twoTorus";
+type Topology = "flat" | "cylinder" | "torus" | "twoTorus";
 
 export interface SurfaceSpec {
   topology: Topology;
@@ -14,57 +14,23 @@ export interface SurfaceSpec {
   rowBits: number;
 }
 
+// The map's own layout, except that five variables become two four-variable
+// tori, with x5 choosing the half.
 export function surfaceSpec(numVars: number): SurfaceSpec {
-  switch (numVars) {
-    case 1:
-      return {
-        topology: "flat",
-        cols: 2,
-        rows: 1,
-        halves: 1,
-        colBits: 1,
-        rowBits: 0,
-      };
-    case 2:
-      return {
-        topology: "flat",
-        cols: 2,
-        rows: 2,
-        halves: 1,
-        colBits: 1,
-        rowBits: 1,
-      };
-    case 3:
-      return {
-        topology: "cylinder",
-        cols: 4,
-        rows: 2,
-        halves: 1,
-        colBits: 2,
-        rowBits: 1,
-      };
-    case 5:
-      return {
-        topology: "twoTorus",
-        cols: 4,
-        rows: 4,
-        halves: 2,
-        colBits: 2,
-        rowBits: 2,
-      };
-    default:
-      return {
-        topology: "torus",
-        cols: 4,
-        rows: 4,
-        halves: 1,
-        colBits: 2,
-        rowBits: 2,
-      };
-  }
+  const halves = numVars === 5 ? 2 : 1;
+  const { rows, cols, rowBits, colBits } = kmapDims(numVars - halves + 1);
+  const topology =
+    numVars <= 2
+      ? "flat"
+      : numVars === 3
+        ? "cylinder"
+        : halves === 2
+          ? "twoTorus"
+          : "torus";
+  return { topology, cols, rows, halves, colBits, rowBits };
 }
 
-export function surfaceTerm(
+function surfaceTerm(
   spec: SurfaceSpec,
   half: number,
   row: number,
@@ -161,9 +127,9 @@ export function buildPatch(
   u1: number,
   v0: number,
   v1: number,
-  segU = 8,
-  segV = 8,
-  offset = 0,
+  segU: number,
+  segV: number,
+  offset: number,
 ): THREE.BufferGeometry {
   const positions: number[] = [];
   const indices: number[] = [];

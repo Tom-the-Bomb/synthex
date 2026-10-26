@@ -85,10 +85,6 @@ function App() {
   const [tableView, setTableView] = useState<TableView>("table");
 
   function changeVars(next: number) {
-    next = Math.min(MAX_VARS, Math.max(MIN_VARS, next));
-    if (next === numVars) {
-      return;
-    }
     setOutputs((prev) =>
       Array.from({ length: 1 << next }, (_, i) => prev[i] ?? CellState.False),
     );
@@ -149,10 +145,10 @@ function App() {
   return (
     <TooltipProvider delayDuration={300}>
       <div className="flex min-h-dvh flex-col xl:h-dvh xl:min-h-184">
-        <header className="flex h-13 shrink-0 items-center justify-between gap-4 border-b border-line px-4 sm:px-5">
+        <header className="flex min-h-13 shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-4 py-2 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5">
             <img src="/favicon.svg" alt="" className="size-6 shrink-0" />
-            <h1 className="text-[15px] font-semibold tracking-[-0.01em]">
+            <h1 className="text-[0.9375rem] font-semibold tracking-[-0.01em]">
               Synthex
             </h1>
             <span aria-hidden="true" className="text-line-2 max-sm:hidden">
@@ -199,7 +195,7 @@ function App() {
               onApply={applyExpression}
               className="w-full lg:w-auto lg:flex-1"
             />
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-fg-2">Variables</span>
               <div
                 role="group"
@@ -258,10 +254,52 @@ function App() {
             )}
           >
             <Pane
+              title="K-Map"
+              meta={hasKMap ? `${outputs.length} cells` : "N/A"}
+              className="lg:col-start-1 lg:row-start-1 xl:col-start-2 xl:row-start-1"
+            >
+              {hasKMap ? (
+                <KMap
+                  numVars={numVars}
+                  outputs={outputs}
+                  onToggle={toggle}
+                  mode={mode}
+                  onModeChange={setMode}
+                  groups={groups}
+                  selected={active}
+                  onSelect={setSelected}
+                />
+              ) : (
+                <p className="max-w-xs px-4 py-4 text-sm leading-relaxed text-fg-2">
+                  The map supports up to {MAX_KMAP_VARS} variables. Use the
+                  truth table to edit larger functions.
+                </p>
+              )}
+            </Pane>
+
+            <Pane
+              title="Minimal Expression"
+              meta="Quine–McCluskey"
+              className={cn("lg:col-start-1 lg:row-start-2", layout.answer)}
+            >
+              <div className="scroll-slim min-h-0 flex-1 overflow-y-auto">
+                <Output
+                  table={table}
+                  sopCover={sopCover}
+                  posCover={posCover}
+                  groups={groups}
+                  mode={mode}
+                  selected={active}
+                  onSelect={selectGroup}
+                />
+              </div>
+            </Pane>
+
+            <Pane
               title="Truth Table"
               meta={`${outputs.length} rows`}
               className={cn(
-                "order-3 lg:sticky lg:top-3 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:max-h-[calc(100dvh-1.5rem)] lg:self-start xl:static xl:col-start-1 xl:max-h-none xl:self-stretch",
+                "lg:sticky lg:top-3 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:max-h-[calc(100dvh-1.5rem)] lg:self-start xl:static xl:col-start-1 xl:max-h-none xl:self-stretch",
                 layout.table,
               )}
             >
@@ -299,51 +337,6 @@ function App() {
                   <Timing {...rows} />
                 </Tabs.Content>
               </Tabs.Root>
-            </Pane>
-
-            <Pane
-              title="K-Map"
-              meta={hasKMap ? `${outputs.length} cells` : "N/A"}
-              className="order-1 lg:col-start-1 lg:row-start-1 xl:col-start-2 xl:row-start-1"
-            >
-              {hasKMap ? (
-                <KMap
-                  numVars={numVars}
-                  outputs={outputs}
-                  onToggle={toggle}
-                  mode={mode}
-                  onModeChange={setMode}
-                  groups={groups}
-                  selected={active}
-                  onSelect={setSelected}
-                />
-              ) : (
-                <p className="max-w-xs px-4 py-4 text-sm leading-relaxed text-fg-2">
-                  The map supports up to {MAX_KMAP_VARS} variables. Use the
-                  truth table to edit larger functions.
-                </p>
-              )}
-            </Pane>
-
-            <Pane
-              title="Minimal Expression"
-              meta="Quine–McCluskey"
-              className={cn(
-                "order-2 lg:col-start-1 lg:row-start-2",
-                layout.answer,
-              )}
-            >
-              <div className="scroll-slim min-h-0 flex-1 overflow-y-auto">
-                <Output
-                  table={table}
-                  sopCover={sopCover}
-                  posCover={posCover}
-                  groups={groups}
-                  mode={mode}
-                  selected={active}
-                  onSelect={selectGroup}
-                />
-              </div>
             </Pane>
           </div>
         </main>

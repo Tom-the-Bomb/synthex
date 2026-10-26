@@ -50,8 +50,8 @@ export default function Table({
       {/* The header starts 2px above the scroller's edge (padding given back):
           at fractional zoom a flush header can snap a device pixel low and let
           scrolled rows show above it. */}
-      <table className="-mt-0.5 w-full border-separate border-spacing-0 text-center font-mono text-[13px]">
-        <thead className="sticky -top-0.5 z-10 bg-surface text-[11px] text-fg-2">
+      <table className="-mt-0.5 w-full border-separate border-spacing-0 text-center font-mono text-[0.8125rem]">
+        <thead className="sticky -top-0.5 z-10 bg-surface text-[0.6875rem] text-fg-2">
           <tr>
             <th className="border-b border-line pt-2.5 pb-2 pl-4 text-left font-medium">
               #
@@ -71,12 +71,12 @@ export default function Table({
         </thead>
         <tbody>
           {outputs.map((state, term) => {
-            const { covering, tint } = groupsOf(term);
+            const { covering, shade } = groupsOf(term);
             return (
               <tr
                 key={term}
                 className="transition-colors duration-150 hover:bg-surface-2"
-                style={{ backgroundColor: tint }}
+                style={shade}
               >
                 <td className="py-1 pl-4 text-left text-fg-3">{term}</td>
                 {vars.map((v) => {
@@ -102,7 +102,7 @@ export default function Table({
                       title={`term ${term}`}
                       aria-label={`term ${term}, ${state}`}
                       className={cn(
-                        "h-5.5 w-8 rounded-md border text-xs font-semibold transition-colors duration-150",
+                        "relative h-5.5 w-8 rounded-md border text-xs font-semibold transition-colors duration-150 pointer-coarse:after:absolute pointer-coarse:after:-inset-x-1.5 pointer-coarse:after:-inset-y-1",
                         chipClasses(state),
                       )}
                     >

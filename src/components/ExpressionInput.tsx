@@ -1,5 +1,5 @@
 import { CornerDownLeft } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useState, type FormEvent } from "react";
 
 import { Button } from "./ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group";
@@ -21,7 +21,8 @@ export default function ExpressionInput({
   const [error, setError] = useState<string | null>(null);
   const id = useId();
 
-  const submit = () => {
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
     try {
       const parsed = parseExpression(text, numVars);
       onApply(parsed.numVars, parsed.outputs);
@@ -33,7 +34,7 @@ export default function ExpressionInput({
 
   return (
     <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
-      <div className="flex gap-2">
+      <form onSubmit={submit} className="flex gap-2">
         <InputGroup className="bg-surface">
           <InputGroupAddon className="font-normal max-sm:sr-only">
             <label htmlFor={id}>Expression</label>
@@ -42,11 +43,6 @@ export default function ExpressionInput({
             id={id}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                submit();
-              }
-            }}
             placeholder="e.g. x1'x2' + x3"
             spellCheck={false}
             autoCapitalize="off"
@@ -61,8 +57,8 @@ export default function ExpressionInput({
             </Kbd>
           </InputGroupAddon>
         </InputGroup>
-        <Button onClick={submit}>Load</Button>
-      </div>
+        <Button type="submit">Load</Button>
+      </form>
       {error && (
         <span
           id={`${id}-error`}

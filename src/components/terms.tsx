@@ -1,7 +1,7 @@
 import katex from "katex";
 import { useState, type CSSProperties } from "react";
 
-import { groupInk, groupTint } from "../lib/groups";
+import { groupText, groupTint } from "../lib/groups";
 
 import "katex/dist/katex.min.css";
 
@@ -30,7 +30,7 @@ function Toggle({ open, onClick }: { open: boolean; onClick: () => void }) {
       type="button"
       onClick={onClick}
       title={open ? "collapse" : "expand"}
-      className="mx-1 rounded-md px-1 align-middle font-mono text-xs text-fg-2 transition-colors hover:bg-surface-3 hover:text-fg"
+      className="relative mx-1 rounded-md px-1 align-middle font-mono text-xs text-fg-2 transition-colors hover:bg-surface-3 hover:text-fg pointer-coarse:after:absolute pointer-coarse:after:-inset-3"
     >
       {open ? "[−]" : "[…]"}
     </button>
@@ -99,14 +99,14 @@ export function TermChips({
   terms,
   sep,
   colors,
-  active,
+  selected,
   onSelect,
 }: {
   prefix: string;
   terms: string[];
   sep: string;
   colors: string[];
-  active: number;
+  selected: number;
   onSelect: (index: number) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -120,20 +120,20 @@ export function TermChips({
     if (!color) {
       return <Tex key={terms[i]} tex={terms[i]} />;
     }
-    const selected = active === i;
+    const isSelected = selected === i;
     return (
       <button
         key={terms[i]}
         type="button"
         onClick={() => onSelect(i)}
-        aria-pressed={selected}
+        aria-pressed={isSelected}
         aria-label={`group ${i + 1}`}
-        className="rounded-md px-1 transition-[background-color,box-shadow] duration-150 ease-out hover:bg-(--chip-hover)"
+        className="relative rounded-md px-1 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out hover:bg-(--chip-hover) pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2"
         style={
           {
-            color: groupInk(color),
-            backgroundColor: selected ? groupTint(color, 18) : undefined,
-            boxShadow: selected
+            color: groupText(color),
+            backgroundColor: isSelected ? groupTint(color, 18) : undefined,
+            boxShadow: isSelected
               ? `inset 0 0 0 1px ${groupTint(color, 50)}`
               : undefined,
             "--chip-hover": groupTint(color, 10),

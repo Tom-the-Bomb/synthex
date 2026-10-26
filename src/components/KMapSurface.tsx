@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ComponentProps,
   type ReactNode,
 } from "react";
 import * as THREE from "three";
@@ -151,7 +152,7 @@ function Patch({
   segV: number;
   offset?: number;
   children: ReactNode;
-} & React.ComponentProps<"mesh">) {
+} & ComponentProps<"mesh">) {
   const geometry = buildPatch(surface, u0, u1, v0, v1, segU, segV, offset);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return (
@@ -299,10 +300,10 @@ function BandFrame({
   spec: SurfaceSpec;
   seg: number;
   color: string;
-  emphasis: "all" | "active" | "dimmed";
+  emphasis: "all" | "selected" | "dimmed";
   overOnes: boolean;
 }) {
-  const edge = emphasis === "active" ? 0.13 : 0.09;
+  const edge = emphasis === "selected" ? 0.13 : 0.09;
   const tu = edge / spec.cols;
   const tv = edge / spec.rows;
   const segU = seg * Math.max(1, Math.round((band.u1 - band.u0) * spec.cols));
@@ -336,7 +337,11 @@ function BandFrame({
           <BandMaterial
             color={color}
             opacity={
-              emphasis === "active" ? 0.42 : emphasis === "dimmed" ? 0.06 : 0.26
+              emphasis === "selected"
+                ? 0.42
+                : emphasis === "dimmed"
+                  ? 0.06
+                  : 0.26
             }
             bias={bias}
           />
@@ -428,14 +433,14 @@ export default function KMapSurface({
   outputs,
   onToggle,
   groups,
-  active,
+  selected,
   isPOS,
 }: {
   numVars: number;
   outputs: CellState[];
   onToggle: (term: number) => void;
   groups: Implicant[];
-  active: number;
+  selected: number;
   isPOS: boolean;
 }) {
   const [tips] = useState(createTipStore);
@@ -472,8 +477,12 @@ export default function KMapSurface({
         ))}
       </div>
 
-      <div className="relative h-110 w-full overflow-hidden rounded-lg border border-line bg-surface-2">
+      <div className="relative h-canvas w-full overflow-hidden rounded-lg border border-line bg-surface-2">
+        {/* OrbitControls sets touch-action: none inline; overriding it to pan-y
+            lets a vertical swipe scroll the page, while a sideways or
+            two-finger drag still turns and zooms the surface. */}
         <Canvas
+          className="touch-pan-y!"
           frameloop="demand"
           camera={{ position: cameraPosition, fov: 45 }}
           dpr={[1, 2]}
@@ -527,10 +536,10 @@ export default function KMapSurface({
                 color={groupColor(isPOS, band.groupIndex)}
                 overOnes={!isPOS}
                 emphasis={
-                  active < 0
+                  selected < 0
                     ? "all"
-                    : band.groupIndex === active
-                      ? "active"
+                    : band.groupIndex === selected
+                      ? "selected"
                       : "dimmed"
                 }
               />
