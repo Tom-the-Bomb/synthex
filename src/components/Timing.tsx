@@ -70,7 +70,7 @@ export default function Timing({
       </svg>
 
       <div
-        className="grid shrink-0 scrollbar-gutter-stable overflow-hidden border-b border-line py-2 font-mono text-[0.6875rem] font-medium text-fg-2"
+        className="grid shrink-0 scrollbar-gutter-stable overflow-hidden border-b border-line py-2 font-mono text-2xs font-medium text-fg-2"
         style={{ gridTemplateColumns: columns, minWidth }}
       >
         <span className="pl-4">#</span>

@@ -49,7 +49,7 @@ export default function Table({
     <div className="scroll-slim max-h-144 min-h-0 flex-1 overflow-auto lg:max-h-none">
       {/* header overlaps the edge by 2px, or rows peek above it at fractional zoom */}
       <table className="-mt-0.5 w-full border-separate border-spacing-0 text-center font-mono text-[0.8125rem]">
-        <thead className="sticky -top-0.5 z-10 bg-surface text-[0.6875rem] text-fg-2">
+        <thead className="sticky -top-0.5 z-10 bg-surface text-2xs text-fg-2">
           <tr>
             <th className="border-b border-line pt-2.5 pb-2 pl-4 text-left font-medium">
               #

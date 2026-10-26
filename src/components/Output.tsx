@@ -31,7 +31,7 @@ function Row({
           : "grid-cols-[2.75rem_minmax(0,1fr)]",
       )}
     >
-      <span className="text-[0.6875rem] font-medium tracking-[0.06em] text-fg-2 uppercase">
+      <span className="text-2xs font-medium tracking-[0.06em] text-fg-2 uppercase">
         {tag}
       </span>
       <div className="scroll-slim min-w-0 overflow-x-auto overflow-y-hidden py-1">

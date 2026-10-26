@@ -230,7 +230,7 @@ function FlatMap({
         }}
       >
         <div
-          className="relative col-start-1 row-start-1 font-mono text-[0.6875rem] leading-none text-fg-2"
+          className="relative col-start-1 row-start-1 font-mono text-2xs leading-none text-fg-2"
           style={{
             backgroundImage:
               "linear-gradient(to top right, transparent calc(50% - 0.5px), var(--line-2) calc(50% - 0.5px), var(--line-2) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
@@ -285,7 +285,7 @@ function FlatMap({
                 )}
               >
                 <span className="leading-none">{state}</span>
-                <span className="text-[0.6875rem] leading-none font-normal opacity-80">
+                <span className="text-2xs leading-none font-normal opacity-80">
                   {term}
                 </span>
               </button>
