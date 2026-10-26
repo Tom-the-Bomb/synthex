@@ -1,3 +1,6 @@
+// troika (drei Text) reads .woff, not .woff2; without a font it fetches one
+// from a CDN, which fails offline
+import labelFont from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff?url";
 import { Line, OrbitControls, Text } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import {
@@ -239,6 +242,7 @@ function Cell({
       <Text
         position={cell.label.position}
         quaternion={cell.label.quaternion}
+        font={labelFont}
         fontSize={0.34}
         color={scene.text[state]}
         anchorX="center"
