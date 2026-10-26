@@ -22,7 +22,7 @@ export class Implicant {
   readonly dashes: number; // binary representation of the cancelled bits in the implicant
   readonly terms: number[]; // original terms (min/max terms + dontcares) covered by the implicant
 
-  covered: number[] = []; // just the min/max terms covered by the implicant (for building the coverage map)
+  covered: number[] = []; // just the min/max terms covered by the implicant, ascending (for building the coverage map)
 
   constructor(ones: number, dashes: number, terms: number[]) {
     this.ones = ones;
@@ -76,15 +76,10 @@ export class Table {
   }
 }
 
-// count # of 1-bits (popcount). Accepts a number (variable masks, <= 8 bits) or a
-// bigint (sets of min/max terms, which can exceed 32 bits).
-function countOnes(x: number | bigint): number {
-  let n = BigInt(x);
+// count # of 1-bits (popcount); each step clears the lowest set bit
+function countOnes(x: number): number {
   let count = 0;
-  while (n) {
-    count += Number(n & 1n);
-    n >>= 1n;
-  }
+  for (; x; x &= x - 1) count++;
   return count;
 }
 
@@ -146,11 +141,12 @@ function findPrimeImplicants(terms: Terms): Implicant[] {
     frontier = Array.from(newFrontier.values());
   }
 
+  // only the original min/max terms (not dontcares) need to be covered by the prime implicants
+  const minMaxTerms = new Set(terms.minMaxTerms);
   for (const implicant of primeImplicants) {
-    // only the original min/max terms (not dontcares) need to be covered by the prime implicants
-    implicant.covered = implicant.terms.filter((t) =>
-      terms.minMaxTerms.includes(t),
-    );
+    implicant.covered = implicant.terms
+      .filter((t) => minMaxTerms.has(t))
+      .sort((a, b) => a - b);
   }
 
   return primeImplicants;
@@ -180,44 +176,65 @@ const SEARCH_BUDGET = 4000;
 // 3. if terms remain (a "cyclic core"), pick the remaining term with the fewest
 //    covering PIs: one of them must be chosen, so try each in turn and recurse
 //
-// sets of min/max terms are bitmasks (bigint, since there can be up to 256
-// terms): bit i is the i-th min/max term
+// state is kept in flag arrays, which stay cheap to test and copy at every
+// step: uncovered[t] is 1 while the t-th min/max term still needs covering, and
+// available[p] is 1 while the p-th PI may still be chosen
 function selectCover(
   primeImplicants: Implicant[],
   minMaxTerms: number[],
 ): Implicant[] {
-  const termBits = minMaxTerms.map((_, i) => 1n << BigInt(i));
+  const termCount = minMaxTerms.length;
   const termOf = new Map(minMaxTerms.map((m, i) => [m, i]));
-  const indexOfBit = new Map(termBits.map((bit, i) => [bit, i]));
-  // the min/max terms each PI covers, and its dash count (the tiebreaker)
-  const masks = primeImplicants.map((pi) =>
-    pi.covered.reduce((mask, m) => mask | termBits[termOf.get(m)!], 0n),
+  // the min/max terms each PI covers, the PIs covering each min/max term, and
+  // a lookup of whether PI p covers term t (covers[p * termCount + t])
+  const termsOf = primeImplicants.map((pi) =>
+    pi.covered.map((m) => termOf.get(m)!),
   );
-  const dashes = primeImplicants.map((pi) => countOnes(pi.dashes));
-  // the PIs covering each min/max term
   const coverers: number[][] = minMaxTerms.map(() => []);
-  primeImplicants.forEach((pi, p) => {
-    for (const m of pi.covered) coverers[termOf.get(m)!].push(p);
+  const covers = new Uint8Array(primeImplicants.length * termCount);
+  termsOf.forEach((terms, p) => {
+    for (const t of terms) {
+      coverers[t].push(p);
+      covers[p * termCount + t] = 1;
+    }
   });
+  const dashes = primeImplicants.map((pi) => countOnes(pi.dashes));
+
+  // uncovered with the given PI's terms crossed off
+  const take = (uncovered: Uint8Array, p: number) => {
+    const next = uncovered.slice();
+    for (const t of termsOf[p]) next[t] = 0;
+    return next;
+  };
 
   let best: number[] | null = null;
   let bestDashes = -1;
   let steps = 0;
 
   const search = (
-    uncovered: bigint,
-    available: Set<number>,
+    uncovered: Uint8Array,
+    available: Uint8Array,
     chosen: number[],
     chosenDashes: number,
   ): void => {
     if (++steps > SEARCH_BUDGET && best !== null) return;
 
+    // the uncovered terms a PI still covers
+    const left = (p: number) => termsOf[p].filter((t) => uncovered[t]);
     // the uncovered terms, each with the PIs still available to cover it
     let terms: { index: number; pis: number[] }[];
 
     // 1. reduce until nothing more can be taken or dropped
     for (;;) {
-      if (uncovered === 0n) {
+      terms = [];
+      for (let t = 0; t < termCount; t++) {
+        if (uncovered[t])
+          terms.push({
+            index: t,
+            pis: coverers[t].filter((p) => available[p]),
+          });
+      }
+      if (terms.length === 0) {
         if (
           best === null ||
           chosen.length < best.length ||
@@ -229,48 +246,48 @@ function selectCover(
         return;
       }
 
-      terms = [];
-      termBits.forEach((bit, index) => {
-        if ((uncovered & bit) !== 0n)
-          terms.push({
-            index,
-            pis: coverers[index].filter((p) => available.has(p)),
-          });
-      });
-      const byIndex = new Map(terms.map((t) => [t.index, t]));
-
-      // a. essential
-      const lone = terms.find((t) => t.pis.length === 1);
-      if (lone) {
-        const p = lone.pis[0];
-        uncovered &= ~masks[p];
-        available = new Set(available);
-        available.delete(p);
-        chosen = [...chosen, p];
-        chosenDashes += dashes[p];
+      // a. essential. taking one can't make another term lone (any term
+      // sharing its PI is now covered), so take them all in one sweep
+      const lone = terms.filter((t) => t.pis.length === 1);
+      if (lone.length > 0) {
+        available = available.slice();
+        for (const { index, pis } of lone) {
+          const p = pis[0];
+          if (!uncovered[index]) continue;
+          uncovered = take(uncovered, p);
+          available[p] = 0;
+          chosen = [...chosen, p];
+          chosenDashes += dashes[p];
+        }
         continue;
       }
 
       // b. row dominance. b can only dominate a if it covers a's first
       // uncovered term, so only those PIs need checking (on an exact tie, the
       // lower-numbered PI is kept)
-      const dropped = [...available].filter((a) => {
-        const ma = masks[a] & uncovered;
-        if (ma === 0n) return true; // covers nothing new
-        const first = byIndex.get(indexOfBit.get(ma & -ma)!)!;
-        return first.pis.some((b) => {
-          const mb = masks[b] & uncovered;
+      const dropped: number[] = [];
+      available.forEach((isAvailable, a) => {
+        if (!isAvailable) return;
+        const mine = left(a);
+        if (mine.length === 0) {
+          dropped.push(a); // covers nothing new
+          return;
+        }
+        const dominated = coverers[mine[0]].some((b) => {
+          if (b === a || !available[b]) return false;
+          if (!mine.every((t) => covers[b * termCount + t])) return false;
+          // b covers a superset, so the sets are equal exactly when the sizes are
+          const same = left(b).length === mine.length;
           return (
-            b !== a &&
-            (ma & mb) === ma &&
-            (dashes[b] > dashes[a] ||
-              (dashes[b] === dashes[a] && (ma !== mb || b < a)))
+            dashes[b] > dashes[a] ||
+            (dashes[b] === dashes[a] && (!same || b < a))
           );
         });
+        if (dominated) dropped.push(a);
       });
       if (dropped.length > 0) {
-        available = new Set(available);
-        for (const p of dropped) available.delete(p);
+        available = available.slice();
+        for (const p of dropped) available[p] = 0;
         continue;
       }
 
@@ -283,21 +300,19 @@ function selectCover(
         list.push(t);
         byFirstPI.set(t.pis[0], list);
       }
-      let dominated = 0n;
-      for (const t of terms) {
-        const covering = new Set(t.pis);
-        const isDominated = t.pis.some((p) =>
+      const dominated = terms.filter((t) =>
+        t.pis.some((p) =>
           (byFirstPI.get(p) ?? []).some(
             (s) =>
               s !== t &&
-              s.pis.every((q) => covering.has(q)) &&
+              s.pis.every((q) => covers[q * termCount + t.index]) &&
               (s.pis.length < t.pis.length || s.index < t.index),
           ),
-        );
-        if (isDominated) dominated |= termBits[t.index];
-      }
-      if (dominated !== 0n) {
-        uncovered &= ~dominated;
+        ),
+      );
+      if (dominated.length > 0) {
+        uncovered = uncovered.slice();
+        for (const t of dominated) uncovered[t.index] = 0;
         continue;
       }
       break;
@@ -308,12 +323,12 @@ function selectCover(
 
     // 2. bound: terms that share no PI each need a PI of their own, so at least
     // this many more PIs are needed
-    let free = uncovered;
+    const free = uncovered.slice();
     let needed = 0;
     for (const { index, pis } of terms) {
-      if ((free & termBits[index]) === 0n) continue;
+      if (!free[index]) continue;
       needed++;
-      for (const p of pis) free &= ~masks[p];
+      for (const p of pis) for (const t of termsOf[p]) free[t] = 0;
     }
     if (best !== null) {
       const count = chosen.length + needed;
@@ -321,8 +336,8 @@ function selectCover(
       // to win on a tie the needed PIs must add more dashes, and at best
       // they're the ones left with the most
       if (count === best.length) {
-        const mostDashes = [...available]
-          .map((p) => dashes[p])
+        const mostDashes = dashes
+          .filter((_, p) => available[p])
           .sort((a, b) => b - a)
           .slice(0, needed)
           .reduce((sum, d) => sum + d, 0);
@@ -334,35 +349,37 @@ function selectCover(
     // try the PIs covering the most uncovered terms (then most dashes) first.
     // once a PI's branch is done, every cover containing it has been seen, so
     // later branches leave it out
-    const gain = new Map(
-      terms[0].pis.map((p) => [p, countOnes(masks[p] & uncovered)]),
-    );
+    const gain = new Map(terms[0].pis.map((p) => [p, left(p).length]));
     const options = [...terms[0].pis].sort(
       (a, b) => gain.get(b)! - gain.get(a)! || dashes[b] - dashes[a],
     );
-    const rest = new Set(available);
+    const rest = available.slice();
     for (const p of options) {
-      rest.delete(p);
+      rest[p] = 0;
       search(
-        uncovered & ~masks[p],
-        new Set(rest),
+        take(uncovered, p),
+        rest.slice(),
         [...chosen, p],
         chosenDashes + dashes[p],
       );
     }
   };
 
-  const all = termBits.reduce((mask, bit) => mask | bit, 0n);
-  search(all, new Set(primeImplicants.keys()), [], 0);
+  search(
+    new Uint8Array(termCount).fill(1),
+    new Uint8Array(primeImplicants.length).fill(1),
+    [],
+    0,
+  );
 
   // a search cut short can keep a PI whose terms the others all cover; drop
   // those, fewest dashes first (a complete search never keeps one)
   const picked = [...best!].sort((a, b) => dashes[a] - dashes[b]);
   for (const p of [...picked]) {
-    const others = picked
-      .filter((q) => q !== p)
-      .reduce((mask, q) => mask | masks[q], 0n);
-    if ((masks[p] & ~others) === 0n) picked.splice(picked.indexOf(p), 1);
+    const covered = termsOf[p].every((t) =>
+      picked.some((q) => q !== p && covers[q * termCount + t]),
+    );
+    if (covered) picked.splice(picked.indexOf(p), 1);
   }
 
   return picked.sort((a, b) => a - b).map((p) => primeImplicants[p]);
@@ -371,7 +388,6 @@ function selectCover(
 // The minimal set of prime implicants (groups) chosen to cover the function.
 // For SOP these are groups of minterms; for POS, groups of maxterms.
 export function computeCover(table: Table, isPOS: boolean): Implicant[] {
-  const { minMaxTerms, dontcares } = table.toTerms(isPOS);
-  const implicants = findPrimeImplicants({ minMaxTerms, dontcares });
-  return selectCover(implicants, minMaxTerms);
+  const terms = table.toTerms(isPOS);
+  return selectCover(findPrimeImplicants(terms), terms.minMaxTerms);
 }
