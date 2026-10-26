@@ -37,8 +37,6 @@ function Toggle({ open, onClick }: { open: boolean; onClick: () => void }) {
   );
 }
 
-// A term list, e.g. m(0, 1, 2), in KaTeX or plain text. Long lists collapse to
-// head […] tail; an expanded plain list scrolls sideways.
 export function TermSet({
   symbol,
   terms,
@@ -52,10 +50,10 @@ export function TermSet({
   const long = terms.length > COLLAPSE_LIMIT;
   const collapsed = long && !open;
 
-  // KaTeX may wrap a long list after any comma instead of running off the pane
+  // lets KaTeX wrap after any comma
   const sep = plain ? ", " : ",\\,\\allowbreak ";
   const lead = plain ? " " : "\\,";
-  // the last two terms stay together, so a wrap never leaves "11)" alone
+  // keeps the last two terms together so "11)" never wraps alone
   const join = (nums: number[]) =>
     plain || nums.length < 2
       ? nums.join(sep)
@@ -91,9 +89,6 @@ export function TermSet({
   return body;
 }
 
-// A minimized expression whose terms each wear their group's colour and select
-// that group on click (a constant function has no colours). A long cover
-// collapses to head […] tail, keeping the separator on both sides of the toggle.
 export function TermChips({
   prefix,
   terms,
@@ -145,7 +140,7 @@ export function TermChips({
     );
   };
 
-  // each separator travels with the term after it, so a wrap never strands it
+  // each separator wraps with the term after it
   const run = (indices: number[]) =>
     indices.map((i, k) =>
       k === 0 ? (
@@ -173,7 +168,6 @@ export function TermChips({
           ...run(all.slice(-EXPR_EDGE)),
         ];
 
-  // the prefix hangs, so a wrapped cover lines up under its first term
   return (
     <span className="inline-flex items-baseline">
       <Tex tex={prefix} className="whitespace-nowrap" />

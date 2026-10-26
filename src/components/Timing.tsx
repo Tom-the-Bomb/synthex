@@ -6,15 +6,11 @@ import { rowGroups } from "../lib/groups";
 import { remScale, useWidth } from "../lib/media";
 import { cn } from "../lib/utils";
 
-// px at the default text size; they scale with the user's text size
-const ROW = 30; // matches the table's row pitch
-const LANE = 20; // narrowest an input lane gets
-const PAD = 5; // inset of the low/high rails inside a lane
-const OUT = 52; // width of the Out lane
+const ROW = 30; // the table's row pitch
+const LANE = 20;
+const PAD = 5;
+const OUT = 52;
 
-// The truth table as a timing diagram: time runs down the rows, each input is a
-// square wave, and Out (filled amber while high, hatched for don't-care) cycles
-// on click like the table's output chip.
 export default function Timing({
   numVars,
   outputs,
@@ -31,9 +27,7 @@ export default function Timing({
   const columns = `2.75rem minmax(${numVars * LANE * unit}px, 1fr) ${out}px 2.75rem`;
   const minWidth = `calc(5.5rem + ${(numVars * LANE + OUT) * unit}px)`;
 
-  // Waves are drawn in real pixels at the lanes' measured width, each rail on a
-  // pixel centre with crispEdges: scaling a fixed viewBox by a fractional factor
-  // made identical strokes render at different weights.
+  // drawn in real pixels: a scaled viewBox gave equal strokes unequal weights
   const [lanesRef, lanesWidth] = useWidth<HTMLSpanElement>(numVars * 32);
   const lane = lanesWidth / numVars;
   const vars = Array.from({ length: numVars }, (_, i) => numVars - i);
@@ -50,8 +44,8 @@ export default function Timing({
         ? out / 2
         : pad;
 
-  // The header sits outside the row scroller (a sticky one let a slice of rows
-  // show above it); both reserve the same scrollbar gutter to stay aligned.
+  // header outside the scroller (a sticky one leaked rows above it); matching
+  // gutters keep the columns aligned
   return (
     <div className="scroll-slim flex max-h-144 min-h-0 flex-1 flex-col overflow-x-auto lg:max-h-none">
       <svg width="0" height="0" className="absolute" aria-hidden="true">

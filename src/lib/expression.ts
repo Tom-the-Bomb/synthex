@@ -32,7 +32,6 @@ export function implicantLiterals(
   return literals;
 }
 
-// one implicant as a product of literals (SOP) or a parenthesised sum (POS)
 function formatImplicant(
   implicant: Implicant,
   numVars: number,
@@ -65,8 +64,6 @@ export function implicantLatex(
   return formatImplicant(implicant, numVars, isPOS, latexLiteral, "\\,");
 }
 
-// The LaTeX terms of a minimized cover, one per group, or a single "1"/"0"
-// when the function is constant.
 export function coverTerms(
   cover: Implicant[],
   numVars: number,
@@ -78,8 +75,7 @@ export function coverTerms(
   return cover.map((implicant) => implicantLatex(implicant, numVars, isPOS));
 }
 
-// A minimized cover in the expression input's syntax, so a copied answer
-// pastes straight back in.
+// in the input's own syntax, so a copied answer pastes back in
 export function coverText(
   cover: Implicant[],
   numVars: number,

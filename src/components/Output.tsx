@@ -13,7 +13,6 @@ import {
 } from "../lib/groups";
 import { cn } from "../lib/utils";
 
-// Every answer line shares one size; an optional action sits flush right.
 function Row({
   tag,
   action,
@@ -43,7 +42,6 @@ function Row({
   );
 }
 
-// m(0, 4, 8, 12), shortened to head … tail so a group row stays one line.
 function shortList(symbol: string, terms: number[]): string {
   const shown =
     terms.length > 6 ? [...terms.slice(0, 3), "…", ...terms.slice(-2)] : terms;
@@ -75,6 +73,7 @@ function GroupList({
         {groups.map((group, i) => {
           const color = groupColor(isPOS, i);
           const isSelected = selected === i;
+          const terms = [...group.covered].sort((a, b) => a - b);
           return (
             <li key={group.key()}>
               <button
@@ -103,7 +102,7 @@ function GroupList({
                   <Tex tex={implicantLatex(group, numVars, isPOS)} />
                 </span>
                 <span className="font-mono text-xs whitespace-nowrap text-fg-2">
-                  {shortList(isPOS ? "M" : "m", group.covered)}
+                  {shortList(isPOS ? "M" : "m", terms)}
                 </span>
               </button>
             </li>
@@ -150,7 +149,6 @@ function CoverRow({
   );
 }
 
-// The prefix hangs like SOP/POS, so wrapped term lists line up under m(.
 function CanonicalRow({
   isMax,
   terms,

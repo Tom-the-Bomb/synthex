@@ -1,27 +1,24 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Dark by default; the light palette follows the device setting. Group colours
-   are mixed toward --group-mix so the 2D map, table and expression hold contrast
-   in both themes while the 3D view keeps the raw palette. */
 :root {
   color-scheme: light dark;
 
-  --bg: #08090a; /* page ground */
-  --surface: #0f1012; /* pane fill */
-  --surface-2: #15161a; /* recessed: cells, inputs, segmented track */
-  --surface-3: #1d1e23; /* raised: selected segment, hover */
-  --line: #1f2125; /* hairlines */
-  --line-2: #2c2e34; /* control borders */
+  --bg: #08090a;
+  --surface: #0f1012;
+  --surface-2: #15161a;
+  --surface-3: #1d1e23;
+  --line: #1f2125;
+  --line-2: #2c2e34;
   --text: #eeeff1;
-  --text-2: #959ba5; /* secondary */
-  --text-3: #7d828b; /* tertiary, still >= 4.5:1 on panes */
-  --one: #f0b429; /* minterm fill */
-  --one-ink: #1d1400; /* text on --one */
-  --one-fg: #f3c14d; /* minterm text on panes */
+  --text-2: #959ba5;
+  --text-3: #7d828b; /* still >= 4.5:1 on panes */
+  --one: #f0b429;
+  --one-ink: #1d1400;
+  --one-fg: #f3c14d;
   --one-soft: color-mix(in srgb, var(--one) 10%, var(--surface));
   --one-edge: rgb(240 180 41 / 0.34);
-  --caret: #7b93ff; /* caret and text selection */
+  --caret: #7b93ff;
   --danger: #ff8080;
   --primary: #eeeff1;
   --primary-fg: #0b0c0e;
@@ -31,7 +28,7 @@
   --tooltip-fg: var(--text);
   --group-mix: #ffffff;
   --group-pct: 88%;
-  --group-l-min: 0.68; /* lightness range of group-coloured text: 4.5:1 on panes */
+  --group-l-min: 0.68; /* group text lightness range, for 4.5:1 */
   --group-l-max: 1;
   --radius: 0.625rem;
 }
@@ -71,7 +68,6 @@
     "Geist Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* the 3D view's height, capped on short (landscape phone) screens */
   --spacing-canvas: min(27.5rem, 70svh);
 
   --color-surface: var(--surface);
@@ -93,7 +89,7 @@
   --color-tooltip: var(--tooltip);
   --color-tooltip-fg: var(--tooltip-fg);
 
-  /* the same tokens under shadcn/ui's names */
+  /* shadcn/ui names */
   --color-background: var(--surface);
   --color-foreground: var(--text);
   --color-primary-foreground: var(--primary-fg);
@@ -107,7 +103,6 @@
   --color-ring: var(--text);
 }
 
-/* In the base layer so utilities can still override these defaults. */
 @layer base {
   *,
   ::before,
@@ -128,25 +123,20 @@
     background: color-mix(in oklab, var(--caret) 32%, transparent);
   }
 
-  /* the same ring as shadcn/ui controls, neutral so a focused control never
-     reads as a selected group */
   :focus-visible {
     outline: 3px solid color-mix(in oklab, var(--color-ring) 50%, transparent);
     outline-offset: 0;
   }
 
-  /* Figures line up in every table, readout and term list. */
   .font-mono {
     font-variant-numeric: tabular-nums;
   }
 
-  /* KaTeX follows the surrounding colour so group colours reach the math. */
   .katex {
     color: inherit;
   }
 }
 
-/* Slim, themed scrollbar. */
 .scroll-slim {
   scrollbar-width: thin;
   scrollbar-color: var(--line-2) transparent;

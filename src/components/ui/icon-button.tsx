@@ -4,7 +4,6 @@ import { Button } from "./button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 import { cn } from "../../lib/utils";
 
-// An icon-only button, named by its tooltip.
 export function IconButton({
   label,
   className,

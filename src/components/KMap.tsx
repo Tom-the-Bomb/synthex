@@ -21,7 +21,7 @@ import { cn } from "../lib/utils";
 
 const KMapSurface = lazy(() => import("./KMapSurface"));
 
-// three.js needs WebGL 2; without it the canvas fails silently, so check first
+// three.js needs WebGL 2 and fails silently without it
 let webgl: boolean | undefined;
 function hasWebGL(): boolean {
   if (webgl === undefined) {
@@ -32,7 +32,6 @@ function hasWebGL(): boolean {
   return webgl;
 }
 
-// Keeps a failed 3D load (offline, or a stale deploy) from unmounting the app.
 class LoadBoundary extends Component<
   { fallback: ReactNode; children: ReactNode },
   { failed: boolean }
@@ -46,7 +45,6 @@ class LoadBoundary extends Component<
   }
 }
 
-// The 3D canvas's footprint, for its loading and failure states.
 function Well({ children }: { children: ReactNode }) {
   return (
     <div className="mt-6 grid h-canvas place-content-center justify-items-center gap-3 rounded-lg border border-line bg-surface-2 px-6 text-center text-xs text-fg-2">
@@ -55,13 +53,10 @@ function Well({ children }: { children: ReactNode }) {
   );
 }
 
-// Geometry in px at the default text size; it scales with the user's text size.
 const GAP = 6;
 const HEADER = 26;
-const MIN_CELL = 40; // smallest a cell shrinks to fit a narrow phone
+const MIN_CELL = 40;
 
-// The corner holds the column variables above its diagonal and the row
-// variables below; it widens until both clear the diagonal.
 function cornerWidth(colBits: number, rowBits: number): number {
   if (colBits >= 3) {
     return 76;
@@ -69,8 +64,6 @@ function cornerWidth(colBits: number, rowBits: number): number {
   return rowBits >= 2 ? 56 : 48;
 }
 
-// Cells grow when the map has its own column, and shrink for the twice-as-wide
-// five-variable map.
 function cellSize(numVars: number, wide: boolean): number {
   if (numVars >= 5) {
     return wide ? 50 : 46;
@@ -120,7 +113,7 @@ interface Geometry {
   gap: number;
   corner: number;
   header: number;
-  inset: number; // loop inset step, staggered so overlapping groups nest
+  inset: number;
 }
 
 function loops(
@@ -187,34 +180,29 @@ function GroupExpression({
   );
 }
 
-export default function KMap({
-  numVars,
-  outputs,
-  onToggle,
-  mode,
-  onModeChange,
-  groups,
-  selected,
-  onSelect,
-}: {
+interface MapProps {
   numVars: number;
   outputs: CellState[];
   onToggle: (term: number) => void;
-  mode: Mode;
-  onModeChange: (mode: Mode) => void;
   groups: Implicant[];
   selected: number;
-  onSelect: (index: number) => void;
-}) {
-  const [view, setView] = useState<View>("flat");
-  const [showExpr, setShowExpr] = useState(false);
+}
+
+function FlatMap({
+  numVars,
+  outputs,
+  onToggle,
+  groups,
+  selected,
+  isPOS,
+}: MapProps & { isPOS: boolean }) {
   const { rows, cols, rowBits, colBits } = kmapDims(numVars);
   const wide = useMediaQuery("(min-width: 80rem)");
   const [mapRef, room] = useWidth<HTMLDivElement>(Infinity);
   const unit = remScale();
   const gap = GAP * unit;
   const corner = cornerWidth(colBits, rowBits) * unit;
-  // shrink cells to fit the pane when they can stay usable; otherwise scroll
+  // fit the pane unless cells would get too small; then scroll
   const fit = Math.floor((room - corner) / cols - gap);
   const cell = Math.min(
     cellSize(numVars, wide) * unit,
@@ -227,10 +215,140 @@ export default function KMap({
     header: HEADER * unit,
     inset: (cell >= 58 * unit ? 4 : 2) * unit,
   };
+
+  return (
+    <div
+      ref={mapRef}
+      className="scroll-slim flex justify-center-safe overflow-x-auto px-4 pt-3 pb-6"
+    >
+      <div
+        className="relative grid w-fit shrink-0"
+        style={{
+          gridTemplateColumns: `${corner}px repeat(${cols}, ${cell}px)`,
+          gridTemplateRows: `${geometry.header}px repeat(${rows}, ${cell}px)`,
+          gap,
+        }}
+      >
+        <div
+          className="relative col-start-1 row-start-1 font-mono text-[0.6875rem] leading-none text-fg-2"
+          style={{
+            backgroundImage:
+              "linear-gradient(to top right, transparent calc(50% - 0.5px), var(--line-2) calc(50% - 0.5px), var(--line-2) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
+          }}
+        >
+          <span className="absolute top-0 -right-1 whitespace-nowrap">
+            <VarLabels hi={colBits} lo={1} />
+          </span>
+          {rowBits > 0 && (
+            <span className="absolute bottom-0.5 left-0 whitespace-nowrap">
+              <VarLabels hi={numVars} lo={colBits + 1} />
+            </span>
+          )}
+        </div>
+
+        {Array.from({ length: cols }, (_, c) => (
+          <div
+            key={`col-${c}`}
+            className="flex items-end justify-center font-mono text-xs text-fg-2"
+            style={{ gridColumn: c + 2, gridRow: 1 }}
+          >
+            {bin(gray(c), colBits)}
+          </div>
+        ))}
+
+        {Array.from({ length: rows }, (_, r) => (
+          <div
+            key={`row-${r}`}
+            className="flex items-center justify-end pr-2 font-mono text-xs text-fg-2"
+            style={{ gridColumn: 1, gridRow: r + 2 }}
+          >
+            {rowBits > 0 ? bin(gray(r), rowBits) : ""}
+          </div>
+        ))}
+
+        {Array.from({ length: rows }, (_, r) =>
+          Array.from({ length: cols }, (_, c) => {
+            const term = cellTerm(r, c, cols);
+            const state = outputs[term];
+            return (
+              <button
+                key={`${r}-${c}`}
+                type="button"
+                onClick={() => onToggle(term)}
+                title={`term ${term}`}
+                aria-label={`term ${term}, ${state}`}
+                style={{ gridColumn: c + 2, gridRow: r + 2 }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 rounded-lg border font-mono font-medium transition-colors duration-150",
+                  numVars >= 5 ? "text-lg" : "text-xl",
+                  cellClasses(state),
+                )}
+              >
+                <span className="leading-none">{state}</span>
+                <span className="text-[0.6875rem] leading-none font-normal opacity-80">
+                  {term}
+                </span>
+              </button>
+            );
+          }),
+        )}
+
+        <div className="pointer-events-none absolute inset-0">
+          {loops(groups, rows, cols, colBits, isPOS, geometry).map((loop) => {
+            const isSelected = loop.groupIndex === selected;
+            const dimmed = selected >= 0 && !isSelected;
+            return (
+              <div
+                key={loop.key}
+                className="absolute rounded-[0.6875rem] transition-[opacity,box-shadow,border-width] duration-150 ease-out"
+                style={{
+                  left: loop.left,
+                  top: loop.top,
+                  width: loop.width,
+                  height: loop.height,
+                  border: `${isSelected ? 3.5 : 2.5}px solid ${groupInk(loop.color)}`,
+                  boxShadow: isSelected
+                    ? `0 0 0 3px ${groupTint(loop.color, 22)}`
+                    : undefined,
+                  opacity: dimmed ? 0.4 : 1,
+                }}
+              />
+            );
+          })}
+        </div>
+      </div>
+      {/* mirrors the row labels so small maps centre */}
+      {numVars <= 2 && (
+        <div
+          aria-hidden="true"
+          className="min-w-0 shrink"
+          style={{ width: corner + gap }}
+        />
+      )}
+    </div>
+  );
+}
+
+export default function KMap({
+  numVars,
+  outputs,
+  onToggle,
+  mode,
+  onModeChange,
+  groups,
+  selected,
+  onSelect,
+}: MapProps & {
+  mode: Mode;
+  onModeChange: (mode: Mode) => void;
+  onSelect: (index: number) => void;
+}) {
+  const [view, setView] = useState<View>("flat");
+  const [showExpr, setShowExpr] = useState(false);
   const isPOS = mode === "pos";
 
   const groupCount = groups.length;
-  // cycles through "all" (-1) and each group, wrapping both ways
+  // -1 is "all"; wraps both ways
   const step = (dir: number) => {
     const count = groupCount + 1;
     onSelect(((selected + 1 + dir + count) % count) - 1);
@@ -254,118 +372,14 @@ export default function KMap({
       </div>
 
       {view === "flat" && (
-        <div
-          ref={mapRef}
-          className="scroll-slim flex justify-center-safe overflow-x-auto px-4 pt-3 pb-6"
-        >
-          <div
-            className="relative grid w-fit shrink-0"
-            style={{
-              gridTemplateColumns: `${corner}px repeat(${cols}, ${cell}px)`,
-              gridTemplateRows: `${geometry.header}px repeat(${rows}, ${cell}px)`,
-              gap,
-            }}
-          >
-            <div
-              className="relative col-start-1 row-start-1 font-mono text-[0.6875rem] leading-none text-fg-2"
-              style={{
-                backgroundImage:
-                  "linear-gradient(to top right, transparent calc(50% - 0.5px), var(--line-2) calc(50% - 0.5px), var(--line-2) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
-              }}
-            >
-              <span className="absolute top-0 -right-1 whitespace-nowrap">
-                <VarLabels hi={colBits} lo={1} />
-              </span>
-              {rowBits > 0 && (
-                <span className="absolute bottom-0.5 left-0 whitespace-nowrap">
-                  <VarLabels hi={numVars} lo={colBits + 1} />
-                </span>
-              )}
-            </div>
-
-            {Array.from({ length: cols }, (_, c) => (
-              <div
-                key={`col-${c}`}
-                className="flex items-end justify-center font-mono text-xs text-fg-2"
-                style={{ gridColumn: c + 2, gridRow: 1 }}
-              >
-                {bin(gray(c), colBits)}
-              </div>
-            ))}
-
-            {Array.from({ length: rows }, (_, r) => (
-              <div
-                key={`row-${r}`}
-                className="flex items-center justify-end pr-2 font-mono text-xs text-fg-2"
-                style={{ gridColumn: 1, gridRow: r + 2 }}
-              >
-                {rowBits > 0 ? bin(gray(r), rowBits) : ""}
-              </div>
-            ))}
-
-            {Array.from({ length: rows }, (_, r) =>
-              Array.from({ length: cols }, (_, c) => {
-                const term = cellTerm(r, c, cols);
-                const state = outputs[term];
-                return (
-                  <button
-                    key={`${r}-${c}`}
-                    type="button"
-                    onClick={() => onToggle(term)}
-                    title={`term ${term}`}
-                    aria-label={`term ${term}, ${state}`}
-                    style={{ gridColumn: c + 2, gridRow: r + 2 }}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-1 rounded-lg border font-mono font-medium transition-colors duration-150",
-                      numVars >= 5 ? "text-lg" : "text-xl",
-                      cellClasses(state),
-                    )}
-                  >
-                    <span className="leading-none">{state}</span>
-                    <span className="text-[0.6875rem] leading-none font-normal opacity-80">
-                      {term}
-                    </span>
-                  </button>
-                );
-              }),
-            )}
-
-            <div className="pointer-events-none absolute inset-0">
-              {loops(groups, rows, cols, colBits, isPOS, geometry).map(
-                (loop) => {
-                  const isSelected = loop.groupIndex === selected;
-                  const dimmed = selected >= 0 && !isSelected;
-                  return (
-                    <div
-                      key={loop.key}
-                      className="absolute rounded-[0.6875rem] transition-[opacity,box-shadow,border-width] duration-150 ease-out"
-                      style={{
-                        left: loop.left,
-                        top: loop.top,
-                        width: loop.width,
-                        height: loop.height,
-                        border: `${isSelected ? 3.5 : 2.5}px solid ${groupInk(loop.color)}`,
-                        // the ring carries selection; no fill, so 1-cells stay amber
-                        boxShadow: isSelected
-                          ? `0 0 0 3px ${groupTint(loop.color, 22)}`
-                          : undefined,
-                        opacity: dimmed ? 0.4 : 1,
-                      }}
-                    />
-                  );
-                },
-              )}
-            </div>
-          </div>
-          {/* balances the row-label column so a narrow map's cells sit centred */}
-          {numVars <= 2 && (
-            <div
-              aria-hidden="true"
-              className="min-w-0 shrink"
-              style={{ width: corner + gap }}
-            />
-          )}
-        </div>
+        <FlatMap
+          numVars={numVars}
+          outputs={outputs}
+          onToggle={onToggle}
+          groups={groups}
+          selected={selected}
+          isPOS={isPOS}
+        />
       )}
 
       {view === "3d" && (
@@ -441,7 +455,7 @@ export default function KMap({
                   <TermSet
                     key={selected}
                     symbol={isPOS ? "M" : "m"}
-                    terms={groups[selected].covered}
+                    terms={[...groups[selected].covered].sort((a, b) => a - b)}
                     plain
                   />
                 )}

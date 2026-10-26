@@ -14,8 +14,7 @@ export interface SurfaceSpec {
   rowBits: number;
 }
 
-// The map's own layout, except that five variables become two four-variable
-// tori, with x5 choosing the half.
+// five variables become two four-variable tori, x5 picking the half
 export function surfaceSpec(numVars: number): SurfaceSpec {
   const halves = numVars === 5 ? 2 : 1;
   const { rows, cols, rowBits, colBits } = kmapDims(numVars - halves + 1);
@@ -222,7 +221,7 @@ export function cellLayouts(spec: SurfaceSpec): CellLayout[] {
 }
 
 export interface BandLayout {
-  id: string; // the implicant and half, stable while the group stays in the cover
+  id: string;
   groupIndex: number;
   half: number;
   u0: number;

@@ -47,9 +47,7 @@ export default function Table({
 
   return (
     <div className="scroll-slim max-h-144 min-h-0 flex-1 overflow-auto lg:max-h-none">
-      {/* The header starts 2px above the scroller's edge (padding given back):
-          at fractional zoom a flush header can snap a device pixel low and let
-          scrolled rows show above it. */}
+      {/* header overlaps the edge by 2px, or rows peek above it at fractional zoom */}
       <table className="-mt-0.5 w-full border-separate border-spacing-0 text-center font-mono text-[0.8125rem]">
         <thead className="sticky -top-0.5 z-10 bg-surface text-[0.6875rem] text-fg-2">
           <tr>

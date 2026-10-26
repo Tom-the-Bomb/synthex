@@ -22,7 +22,7 @@ export class Implicant {
   readonly dashes: number; // binary representation of the cancelled bits in the implicant
   readonly terms: number[]; // original terms (min/max terms + dontcares) covered by the implicant
 
-  covered: number[] = []; // just the min/max terms covered by the implicant, ascending (for building the coverage map)
+  covered: number[] = []; // just the min/max terms covered by the implicant (for building the coverage map)
 
   constructor(ones: number, dashes: number, terms: number[]) {
     this.ones = ones;
@@ -76,10 +76,13 @@ export class Table {
   }
 }
 
-// count # of 1-bits (popcount); each step clears the lowest set bit
+// count # of 1-bits (popcount)
 function countOnes(x: number): number {
   let count = 0;
-  for (; x; x &= x - 1) count++;
+  while (x) {
+    count += x & 1;
+    x >>= 1;
+  }
   return count;
 }
 
@@ -141,12 +144,10 @@ function findPrimeImplicants(terms: Terms): Implicant[] {
     frontier = Array.from(newFrontier.values());
   }
 
-  // only the original min/max terms (not dontcares) need to be covered by the prime implicants
   const minMaxTerms = new Set(terms.minMaxTerms);
   for (const implicant of primeImplicants) {
-    implicant.covered = implicant.terms
-      .filter((t) => minMaxTerms.has(t))
-      .sort((a, b) => a - b);
+    // only the original min/max terms (not dontcares) need to be covered by the prime implicants
+    implicant.covered = implicant.terms.filter((t) => minMaxTerms.has(t));
   }
 
   return primeImplicants;
@@ -388,6 +389,7 @@ function selectCover(
 // The minimal set of prime implicants (groups) chosen to cover the function.
 // For SOP these are groups of minterms; for POS, groups of maxterms.
 export function computeCover(table: Table, isPOS: boolean): Implicant[] {
-  const terms = table.toTerms(isPOS);
-  return selectCover(findPrimeImplicants(terms), terms.minMaxTerms);
+  const { minMaxTerms, dontcares } = table.toTerms(isPOS);
+  const implicants = findPrimeImplicants({ minMaxTerms, dontcares });
+  return selectCover(implicants, minMaxTerms);
 }

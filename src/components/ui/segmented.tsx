@@ -24,7 +24,7 @@ export function Segmented<T extends string>({
         type="single"
         aria-labelledby={id}
         value={value}
-        // clicking the chosen option would clear it; keep the current one
+        // re-clicking the chosen option sends "", which would clear it
         onValueChange={(next) => next && onChange(next as T)}
         className={segmentTrack}
       >

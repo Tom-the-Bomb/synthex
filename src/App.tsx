@@ -102,8 +102,6 @@ function App() {
     setOutputs(nextOutputs);
   }
 
-  // Selecting a group from the expression switches the map to its cover;
-  // selecting it again goes back to showing all groups.
   function selectGroup(isPOS: boolean, index: number) {
     const target: Mode = isPOS ? "pos" : "sop";
     if (mode === target && selected === index) {
@@ -128,8 +126,6 @@ function App() {
     isPOS: mode === "pos",
     selected: active,
   };
-  // Without a map the table takes a wide column and the note sits above the
-  // expression.
   const layout = hasKMap
     ? {
         main: "xl:grid-cols-[19rem_minmax(25rem,auto)_minmax(0,1fr)]",
@@ -173,7 +169,6 @@ function App() {
                 rel="noopener noreferrer"
                 aria-label="Source on GitHub, by Tom-the-Bomb"
               >
-                {/* Lucide carries no brand marks, so the GitHub logo stays inline */}
                 <svg
                   viewBox="0 0 16 16"
                   aria-hidden="true"
@@ -308,8 +303,7 @@ function App() {
                 onValueChange={(view) => setTableView(view as TableView)}
                 className="flex min-h-0 flex-1 flex-col"
               >
-                {/* Composited above the rows: at fractional zoom the rows'
-                  clip can round a device pixel outward, over this border. */}
+                {/* own layer, or rows bleed over this border at fractional zoom */}
                 <div className="relative z-20 flex transform-gpu items-center gap-2 border-b border-line bg-surface px-4 py-2.5">
                   <span className="text-xs text-fg-2">View</span>
                   <Tabs.List

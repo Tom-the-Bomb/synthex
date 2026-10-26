@@ -1,5 +1,4 @@
-// troika (drei Text) reads .woff, not .woff2; without a font it fetches one
-// from a CDN, which fails offline
+// drei's Text needs a .woff; without one it fetches a font from a CDN
 import labelFont from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff?url";
 import { Line, OrbitControls, Text } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
@@ -35,9 +34,8 @@ import {
 
 type Tip = { term: number; x: number; y: number } | null;
 
-// Hover lives outside React state so the pointer only re-renders the tooltip,
-// not the scene. Hiding waits a frame, so crossing between cells (out fires
-// before over) doesn't blink it.
+// Outside React state so hovering re-renders only the tip. Hiding waits a
+// frame so moving between cells doesn't blink it.
 function createTipStore() {
   let tip: Tip = null;
   let pendingHide = 0;
@@ -65,8 +63,6 @@ function createTipStore() {
 }
 type TipStore = ReturnType<typeof createTipStore>;
 
-// Placed before paint beside the pointer, on whichever side has room, and
-// clamped to the canvas.
 function HoverTip({ store, numVars }: { store: TipStore; numVars: number }) {
   const tip = useSyncExternalStore(store.subscribe, store.get);
   const ref = useRef<HTMLDivElement>(null);
@@ -111,7 +107,7 @@ interface Scene {
   emissive: Record<CellState, string>;
   text: Record<CellState, string>;
   body: string;
-  link: string; // lines joining the two tori of a five-variable map
+  link: string;
 }
 
 const SCENES: Record<"dark" | "light", Scene> = {
@@ -164,7 +160,6 @@ function Patch({
 
 type LabelledCell = CellLayout & { label: ReturnType<typeof labelPose> };
 
-// A cell's value sits just off the surface at its centre, facing outward.
 function labelPose(surface: Surface, cell: CellLayout) {
   const point = surface.point(cell.centerU, cell.centerV);
   const normal = surface.normal(cell.centerU, cell.centerV).normalize();
@@ -256,9 +251,7 @@ function Cell({
   );
 }
 
-// One pass (forceSinglePass): three draws transparent double-sided meshes back
-// then front, re-resolving the shader twice per mesh per frame, and the surface
-// underneath already hides any far side.
+// forceSinglePass: double-sided transparent meshes otherwise draw twice a frame
 function BandMaterial({
   color,
   opacity,
@@ -283,9 +276,6 @@ function BandMaterial({
   );
 }
 
-// A group on the surface: a translucent wash edged by four solid strips. SOP
-// groups sit on amber 1-cells, which a wash would tint orange, so they get the
-// edges alone.
 function BandFrame({
   surface,
   band,
@@ -308,11 +298,10 @@ function BandFrame({
   const tv = edge / spec.rows;
   const segU = seg * Math.max(1, Math.round((band.u1 - band.u0) * spec.cols));
   const segV = seg * Math.max(1, Math.round((band.v1 - band.v0) * spec.rows));
-  // Every group hugs the surface at one height; overlaps are separated by draw
-  // order and depth bias (floating each further out left ghost shells).
+  // one height for every group; draw order and depth bias separate overlaps
   const offset = 0.012;
   const bias = -1 - (band.groupIndex % 8);
-  // [u0, u1, v0, v1]: the two side strips run along v, the other two along u
+  // [u0, u1, v0, v1]; the first two run along v
   const strips = [
     [band.u0, band.u0 + tu, band.v0, band.v1],
     [band.u1 - tu, band.u1, band.v0, band.v1],
@@ -371,8 +360,6 @@ function BandFrame({
   );
 }
 
-// Pulls the camera back on a canvas taller than it is wide, so the whole
-// surface stays in frame.
 function FitCamera({
   position: [x, y, z],
 }: {
@@ -387,7 +374,6 @@ function FitCamera({
   return null;
 }
 
-// Everything in the scene that depends only on the variable count.
 function sceneShape(numVars: number) {
   const spec = surfaceSpec(numVars);
   const surfaces = Array.from({ length: spec.halves }, (_, half) =>
@@ -410,7 +396,6 @@ function sceneShape(numVars: number) {
             ],
           }));
 
-  // a level view of the upright cylinder, face-on for flat, from above for tori
   const cameraPosition: [number, number, number] =
     spec.topology === "cylinder"
       ? [3.4, 1.2, 6]
@@ -446,7 +431,7 @@ export default function KMapSurface({
   const [tips] = useState(createTipStore);
   const scene =
     SCENES[useMediaQuery("(prefers-color-scheme: light)") ? "light" : "dark"];
-  // unmounting mid-hover fires no pointer-out to reset the cursor
+  // unmounting mid-hover skips pointer-out
   useEffect(
     () => () => {
       document.body.style.cursor = "auto";
@@ -454,8 +439,7 @@ export default function KMapSurface({
     [],
   );
 
-  // Patches rebuild their geometry when their surface changes, so the shape
-  // must keep its identity across selection, mode and cell changes.
+  // stable identity, or every Patch rebuilds its geometry
   const { spec, surfaces, cells, links, seg, cameraPosition } = useMemo(
     () => sceneShape(numVars),
     [numVars],
@@ -478,9 +462,7 @@ export default function KMapSurface({
       </div>
 
       <div className="relative h-canvas w-full overflow-hidden rounded-lg border border-line bg-surface-2">
-        {/* OrbitControls sets touch-action: none inline; overriding it to pan-y
-            lets a vertical swipe scroll the page, while a sideways or
-            two-finger drag still turns and zooms the surface. */}
+        {/* overrides OrbitControls' touch-action: none so swipes scroll the page */}
         <Canvas
           className="touch-pan-y!"
           frameloop="demand"

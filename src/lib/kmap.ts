@@ -52,8 +52,6 @@ function coveredIndices(count: number, ones: number, dashes: number): number[] {
   return indices;
 }
 
-// The rows and columns of a map (with `colBits` column variables) that a group
-// covers.
 export function coveredCells(
   group: Implicant,
   rows: number,

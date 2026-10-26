@@ -1,5 +1,4 @@
-// Shared by the toggle groups and the table/timing tabs: Radix marks the chosen
-// option data-state="on" on a toggle and "active" on a tab.
+// Radix marks the chosen toggle data-state="on" and the chosen tab "active"
 export const segmentTrack =
   "flex rounded-lg border border-line bg-surface-2 p-0.5";
 

@@ -11,8 +11,7 @@ export function useMediaQuery(query: string): boolean {
   );
 }
 
-// An element's content width in whole pixels, kept current as it resizes. The
-// first measurement lands before paint.
+// observes the element present on mount, so its owner must mount with it
 export function useWidth<T extends HTMLElement>(initial: number) {
   const ref = useRef<T>(null);
   const [width, setWidth] = useState(initial);
@@ -38,8 +37,7 @@ export function useWidth<T extends HTMLElement>(initial: number) {
   return [ref, width] as const;
 }
 
-// The user's text size relative to the 16px default (a browser setting), for
-// layout drawn in pixels that should grow with the text.
+// the browser's text-size setting, relative to the 16px default
 export function remScale(): number {
   return parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
 }
