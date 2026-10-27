@@ -1,5 +1,7 @@
 import katex from "katex";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
+
+import { groupText, groupTint } from "../lib/groups";
 
 import "katex/dist/katex.min.css";
 
@@ -25,50 +27,54 @@ export function Tex({ tex, className }: { tex: string; className?: string }) {
 function Toggle({ open, onClick }: { open: boolean; onClick: () => void }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       title={open ? "collapse" : "expand"}
-      className="mx-1 align-middle text-sm font-bold text-teal-500 transition-colors hover:text-amber-300"
+      aria-label={open ? "collapse" : "expand"}
+      aria-expanded={open}
+      className="relative mx-1 rounded-md px-1 align-middle font-mono text-xs text-fg-2 transition-colors hover:bg-surface-3 hover:text-fg pointer-coarse:after:absolute pointer-coarse:after:-inset-3"
     >
       {open ? "[−]" : "[…]"}
     </button>
   );
 }
 
-// Collapsible term list, e.g. m(0, 1, 2). Rendered through KaTeX by default, or
-// as plain text when `plain` is set. Long lists collapse to head […] tail;
-// a plain list only scrolls horizontally once it has been expanded.
 export function TermSet({
   symbol,
   terms,
   plain = false,
-  className,
 }: {
   symbol: string;
   terms: number[];
   plain?: boolean;
-  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const long = terms.length > COLLAPSE_LIMIT;
   const collapsed = long && !open;
 
-  const sep = plain ? ", " : ",\\,";
+  // lets KaTeX wrap after any comma
+  const sep = plain ? ", " : ",\\,\\allowbreak ";
   const lead = plain ? " " : "\\,";
-  const join = (nums: number[]) => nums.join(sep);
+  // keeps the last two terms together so "11)" never wraps alone
+  const join = (nums: number[]) =>
+    plain || nums.length < 2
+      ? nums.join(sep)
+      : `${nums.slice(0, -1).join(sep)},\\,${nums[nums.length - 1]}`;
   const frag = (text: string) =>
-    plain ? <span>{text}</span> : <Tex tex={text} className={className} />;
+    plain ? <span>{text}</span> : <Tex tex={text} />;
   const toggle = long ? (
     <Toggle open={open} onClick={() => setOpen((o) => !o)} />
   ) : null;
 
+  const wrap = plain ? "whitespace-nowrap" : "";
   const body = collapsed ? (
-    <span className="whitespace-nowrap">
+    <span className={wrap}>
       {frag(`${symbol}(${join(terms.slice(0, EDGE))}${sep}`)}
       {toggle}
       {frag(`${lead}${join(terms.slice(-EDGE))})`)}
     </span>
   ) : (
-    <span className="whitespace-nowrap">
+    <span className={wrap}>
       {frag(`${symbol}(${join(terms)})`)}
       {toggle}
     </span>
@@ -85,48 +91,89 @@ export function TermSet({
   return body;
 }
 
-// Collapsible minimized expression, e.g. f = x1x2 + x3 + ... A long cover
-// collapses to head […] tail, with the term separator kept on both sides of the
-// toggle so the operators still read correctly. Relies on an ancestor to scroll
-// when expanded, mirroring the KaTeX TermSet.
-export function ExprSet({
+export function TermChips({
   prefix,
   terms,
   sep,
-  className,
+  colors,
+  selected,
+  onSelect,
 }: {
   prefix: string;
   terms: string[];
   sep: string;
-  className?: string;
+  colors: string[];
+  selected: number;
+  onSelect: (index: number) => void;
 }) {
   const [open, setOpen] = useState(false);
   const long = terms.length > EXPR_LIMIT;
-  const join = (parts: string[]) => parts.join(sep);
   const toggle = long ? (
-    <Toggle open={open} onClick={() => setOpen((o) => !o)} />
+    <Toggle key="toggle" open={open} onClick={() => setOpen((o) => !o)} />
   ) : null;
 
-  if (!long || open) {
+  const chip = (i: number) => {
+    const color = colors[i];
+    if (!color) {
+      return <Tex key={terms[i]} tex={terms[i]} />;
+    }
+    const isSelected = selected === i;
     return (
-      <span className="whitespace-nowrap">
-        <Tex tex={`${prefix}${join(terms)}`} className={className} />
-        {toggle}
-      </span>
+      <button
+        key={terms[i]}
+        type="button"
+        onClick={() => onSelect(i)}
+        aria-pressed={isSelected}
+        aria-label={`group ${i + 1}`}
+        className="relative rounded-md px-1 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out hover:bg-(--chip-hover) pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2"
+        style={
+          {
+            color: groupText(color),
+            backgroundColor: isSelected ? groupTint(color, 18) : undefined,
+            boxShadow: isSelected
+              ? `inset 0 0 0 1px ${groupTint(color, 50)}`
+              : undefined,
+            "--chip-hover": groupTint(color, 10),
+          } as CSSProperties
+        }
+      >
+        <Tex tex={terms[i]} />
+      </button>
     );
-  }
+  };
+
+  // each separator wraps with the term after it
+  const run = (indices: number[]) =>
+    indices.map((i, k) =>
+      k === 0 ? (
+        chip(i)
+      ) : (
+        <span
+          key={`sep-${i}`}
+          className="inline-flex items-baseline whitespace-nowrap"
+        >
+          <Tex tex={sep} />
+          {chip(i)}
+        </span>
+      ),
+    );
+
+  const all = terms.map((_, i) => i);
+  const body =
+    !long || open
+      ? [...run(all), toggle]
+      : [
+          ...run(all.slice(0, EXPR_EDGE)),
+          <Tex key="sep-head" tex={sep} />,
+          toggle,
+          <Tex key="sep-tail" tex={sep} />,
+          ...run(all.slice(-EXPR_EDGE)),
+        ];
 
   return (
-    <span className="whitespace-nowrap">
-      <Tex
-        tex={`${prefix}${join(terms.slice(0, EXPR_EDGE))}${sep}`}
-        className={className}
-      />
-      {toggle}
-      <Tex
-        tex={`${sep}${join(terms.slice(-EXPR_EDGE))}`}
-        className={className}
-      />
+    <span className="inline-flex items-baseline">
+      <Tex tex={prefix} className="whitespace-nowrap" />
+      <span className="flex flex-wrap items-baseline gap-y-1.5">{body}</span>
     </span>
   );
 }

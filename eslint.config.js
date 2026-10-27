@@ -64,4 +64,9 @@ export default defineConfig([
       "better-tailwindcss/no-unnecessary-whitespace": "warn",
     },
   },
+  {
+    // shadcn/ui components export their variants alongside the component
+    files: ["src/components/ui/**"],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
 ]);

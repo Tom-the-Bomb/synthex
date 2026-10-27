@@ -1,81 +1,150 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 :root {
-  --bp-ink: #0a1722; /* page base */
-  --bp-panel: #0f2433; /* panel fill */
-  --bp-line: #2dd4bf; /* teal grid/structure */
-  --bp-edge: rgba(94, 234, 212, 0.35);
-  --bp-edge-soft: rgba(94, 234, 212, 0.14);
-  --bp-amber: #fbbf24; /* marking ink */
+  color-scheme: light dark;
+
+  --bg: #08090a;
+  --surface: #0f1012;
+  --surface-2: #15161a;
+  --surface-3: #1d1e23;
+  --line: #1f2125;
+  --line-2: #2c2e34;
+  --text: #eeeff1;
+  --text-2: #959ba5;
+  --text-3: #7d828b; /* still >= 4.5:1 on panes */
+  --one: #f0b429;
+  --one-ink: #1d1400;
+  --one-fg: #f3c14d;
+  --one-soft: color-mix(in srgb, var(--one) 10%, var(--surface));
+  --one-edge: color-mix(in srgb, var(--one) 34%, transparent);
+  --caret: #7b93ff;
+  --danger: #ff8080;
+  --primary: #eeeff1;
+  --primary-fg: #0b0c0e;
+  --seg-on: #25272d;
+  --seg-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --tooltip: var(--seg-on); /* dark in both themes */
+  --tooltip-fg: var(--text);
+  --group-mix: #ffffff;
+  --group-pct: 88%;
+  --group-l-min: 0.68; /* group text lightness range, for 4.5:1 */
+  --group-l-max: 1;
+  --radius: 0.625rem;
 }
 
-html {
-  color-scheme: dark;
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f5f6;
+    --surface: #ffffff;
+    --surface-2: #f4f4f5;
+    --surface-3: #ebebed;
+    --line: #e6e6e9;
+    --line-2: #d6d7dc;
+    --text: #16171a;
+    --text-2: #5b5f69;
+    --text-3: #6c707a;
+    --one-fg: #865800;
+    --one-soft: #fdf4db;
+    --one-edge: #eed07e;
+    --caret: #4a61e3;
+    --danger: #cc3333;
+    --primary: #16171a;
+    --primary-fg: #ffffff;
+    --seg-on: #ffffff;
+    --seg-shadow:
+      0 1px 2px rgb(16 17 20 / 0.12), 0 0 0 1px rgb(16 17 20 / 0.04);
+    --tooltip: var(--text);
+    --tooltip-fg: var(--surface);
+    --group-mix: #000000;
+    --group-pct: 84%;
+    --group-l-min: 0;
+    --group-l-max: 0.48;
+  }
 }
 
-body {
-  margin: 0;
-  font-family:
-    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  color: #cbe7ea;
+@theme inline {
+  --font-sans:
+    "Geist Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+  --text-2xs: 0.6875rem;
+
+  --spacing-canvas: min(27.5rem, 70svh);
+
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-fg: var(--text);
+  --color-fg-2: var(--text-2);
+  --color-fg-3: var(--text-3);
+  --color-one: var(--one);
+  --color-one-ink: var(--one-ink);
+  --color-one-fg: var(--one-fg);
+  --color-one-soft: var(--one-soft);
+  --color-one-edge: var(--one-edge);
+  --color-danger: var(--danger);
+  --color-primary: var(--primary);
+  --color-seg-on: var(--seg-on);
+  --color-tooltip: var(--tooltip);
+  --color-tooltip-fg: var(--tooltip-fg);
+
+  /* shadcn/ui names */
+  --color-background: var(--surface);
+  --color-foreground: var(--text);
+  --color-primary-foreground: var(--primary-fg);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--text-2);
+  --color-accent: var(--surface-3);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--danger);
+  --color-border: var(--line-2);
+  --color-input: var(--line-2);
+  --color-ring: var(--text);
 }
 
-/* Blueprint grid: fine minor lines + heavier major lines for depth. */
-.blueprint-bg {
-  background-color: var(--bp-ink);
-  background-image:
-    linear-gradient(var(--bp-edge-soft) 1px, transparent 1px),
-    linear-gradient(90deg, var(--bp-edge-soft) 1px, transparent 1px),
-    linear-gradient(rgba(94, 234, 212, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(94, 234, 212, 0.05) 1px, transparent 1px);
-  background-size:
-    120px 120px,
-    120px 120px,
-    24px 24px,
-    24px 24px;
-  background-position: -1px -1px;
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    caret-color: var(--caret);
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--caret) 32%, transparent);
+  }
+
+  :focus-visible {
+    outline: 3px solid color-mix(in oklab, var(--color-ring) 50%, transparent);
+    outline-offset: 0;
+  }
 }
 
-/* Framed instrument panel with a layered inner draft line for depth. */
-.panel {
-  position: relative;
-  background: linear-gradient(
-    180deg,
-    rgba(19, 45, 62, 0.92),
-    rgba(11, 28, 40, 0.92)
+/* Radix marks a chosen toggle data-state="on" and a chosen tab "active" */
+@custom-variant chosen (&:is([data-state="on"], [data-state="active"]));
+
+@utility diagonal-rule {
+  background-image: linear-gradient(
+    to top right,
+    transparent calc(50% - 0.5px),
+    var(--line-2) calc(50% - 0.5px) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
   );
-  border: 1px solid var(--bp-edge);
-  box-shadow:
-    0 18px 40px -22px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 rgba(148, 233, 219, 0.08);
-  backdrop-filter: blur(2px);
-}
-.panel::before {
-  content: "";
-  position: absolute;
-  inset: 6px;
-  border: 1px solid var(--bp-edge-soft);
-  pointer-events: none;
 }
 
-/* Engineering "title block" - fielded header like a drawing's name plate. */
-.titleblock {
-  position: relative;
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      rgba(94, 234, 212, 0.05) 0 8px,
-      transparent 8px 16px
-    ),
-    rgba(15, 36, 51, 0.9);
-  border: 1px solid var(--bp-edge);
-  box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.9);
-}
-
-/* Slim, themed scrollbar (replaces the default chunky OS one). */
 .scroll-slim {
   scrollbar-width: thin;
-  scrollbar-color: #1d6f6a transparent;
+  scrollbar-color: var(--line-2) transparent;
 }
 .scroll-slim::-webkit-scrollbar {
   width: 10px;
@@ -85,11 +154,20 @@ body {
   background: transparent;
 }
 .scroll-slim::-webkit-scrollbar-thumb {
-  background-color: #1d6f6a;
+  background-color: var(--line-2);
   border-radius: 9999px;
   border: 3px solid transparent;
   background-clip: content-box;
 }
 .scroll-slim::-webkit-scrollbar-thumb:hover {
-  background-color: #2dd4bf;
+  background-color: var(--text-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
 }

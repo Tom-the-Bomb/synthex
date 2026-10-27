@@ -1,9 +1,9 @@
 import * as THREE from "three";
 
 import type { Implicant } from "./algorithm";
-import { coveredIndices, gray } from "./kmap";
+import { cellTerm, coveredCells, kmapDims } from "./kmap";
 
-export type Topology = "flat" | "cylinder" | "torus" | "twoTorus";
+type Topology = "flat" | "cylinder" | "torus";
 
 export interface SurfaceSpec {
   topology: Topology;
@@ -14,64 +14,23 @@ export interface SurfaceSpec {
   rowBits: number;
 }
 
+// five variables become two four-variable tori, x5 picking the half
 export function surfaceSpec(numVars: number): SurfaceSpec {
-  switch (numVars) {
-    case 1:
-      return {
-        topology: "flat",
-        cols: 2,
-        rows: 1,
-        halves: 1,
-        colBits: 1,
-        rowBits: 0,
-      };
-    case 2:
-      return {
-        topology: "flat",
-        cols: 2,
-        rows: 2,
-        halves: 1,
-        colBits: 1,
-        rowBits: 1,
-      };
-    case 3:
-      return {
-        topology: "cylinder",
-        cols: 4,
-        rows: 2,
-        halves: 1,
-        colBits: 2,
-        rowBits: 1,
-      };
-    case 5:
-      return {
-        topology: "twoTorus",
-        cols: 4,
-        rows: 4,
-        halves: 2,
-        colBits: 2,
-        rowBits: 2,
-      };
-    default:
-      return {
-        topology: "torus",
-        cols: 4,
-        rows: 4,
-        halves: 1,
-        colBits: 2,
-        rowBits: 2,
-      };
-  }
+  const halves = numVars === 5 ? 2 : 1;
+  const { rows, cols, rowBits, colBits } = kmapDims(numVars - halves + 1);
+  const topology = numVars <= 2 ? "flat" : numVars === 3 ? "cylinder" : "torus";
+  return { topology, cols, rows, halves, colBits, rowBits };
 }
 
-export function surfaceTerm(
+function surfaceTerm(
   spec: SurfaceSpec,
   half: number,
   row: number,
   col: number,
 ): number {
-  const eBit = spec.colBits + spec.rowBits;
-  return (half << eBit) | (gray(row) << spec.colBits) | gray(col);
+  return (
+    (half << (spec.colBits + spec.rowBits)) | cellTerm(row, col, spec.cols)
+  );
 }
 
 export function termAssignment(term: number, numVars: number): string {
@@ -95,8 +54,7 @@ const FLAT_CELL = 1.25;
 
 export function makeSurface(spec: SurfaceSpec, half: number): Surface {
   switch (spec.topology) {
-    case "torus":
-    case "twoTorus": {
+    case "torus": {
       const yShift =
         spec.halves === 2 ? (half === 0 ? -TORUS_GAP : TORUS_GAP) : 0;
       return {
@@ -161,9 +119,9 @@ export function buildPatch(
   u1: number,
   v0: number,
   v1: number,
-  segU = 8,
-  segV = 8,
-  offset = 0,
+  segU: number,
+  segV: number,
+  offset: number,
 ): THREE.BufferGeometry {
   const positions: number[] = [];
   const indices: number[] = [];
@@ -256,6 +214,7 @@ export function cellLayouts(spec: SurfaceSpec): CellLayout[] {
 }
 
 export interface BandLayout {
+  id: string;
   groupIndex: number;
   half: number;
   u0: number;
@@ -275,11 +234,11 @@ export function bandLayouts(
   const bands: BandLayout[] = [];
 
   groups.forEach((group, groupIndex) => {
-    const coveredCols = coveredIndices(cols, group.ones, group.dashes);
-    const coveredRows = coveredIndices(
+    const { rows: coveredRows, cols: coveredCols } = coveredCells(
+      group,
       rows,
-      group.ones >> colBits,
-      group.dashes >> colBits,
+      cols,
+      colBits,
     );
 
     const eOnes = (group.ones >> eBit) & 1;
@@ -294,6 +253,7 @@ export function bandLayouts(
 
     for (const half of halves) {
       bands.push({
+        id: `${group.key()}/${half}`,
         groupIndex,
         half,
         u0: colRun.start * du + du * BAND_GAP,

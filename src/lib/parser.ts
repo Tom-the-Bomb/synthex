@@ -59,6 +59,9 @@ function tokenize(input: string): Token[] {
           `expected a variable index after "x" (position ${pos + 1})`,
         );
       }
+      if (Number(digits) === 0) {
+        throw new Error(`variables start at x1 (position ${pos + 1})`);
+      }
       tokens.push({ type: "var", index: Number(digits), pos });
     } else if (c === "0" || c === "1") {
       tokens.push({ type: "const", value: c === "1", pos });
@@ -82,7 +85,8 @@ function tokenize(input: string): Token[] {
       tokens.push({ type: ")", pos });
       i++;
     } else {
-      throw new Error(`unexpected character "${c}" (position ${pos + 1})`);
+      const char = String.fromCodePoint(input.codePointAt(i)!);
+      throw new Error(`unexpected character "${char}" (position ${pos + 1})`);
     }
   }
   return tokens;
@@ -211,14 +215,26 @@ export function parseExpression(
   if (input.trim() === "") {
     throw new Error("enter an expression");
   }
-  const ast = parse(tokenize(input));
-  const highest = highestVar(ast);
-  if (highest > MAX_VARS) {
-    throw new Error(`x${highest} exceeds the maximum of ${MAX_VARS} variables`);
+  try {
+    const ast = parse(tokenize(input));
+    const highest = highestVar(ast);
+    if (highest > MAX_VARS) {
+      throw new Error(
+        `x${highest} exceeds the maximum of ${MAX_VARS} variables`,
+      );
+    }
+    const numVars = Math.max(highest, minVars);
+    const outputs = Array.from({ length: 1 << numVars }, (_, term) =>
+      evaluate(ast, term) ? CellState.True : CellState.False,
+    );
+    return { numVars, outputs };
+  } catch (e) {
+    // the parser and evaluator recurse, so a huge input can overflow the stack
+    if (e instanceof RangeError) {
+      throw new Error("expression is too long or too deeply nested", {
+        cause: e,
+      });
+    }
+    throw e;
   }
-  const numVars = Math.max(highest, minVars);
-  const outputs = Array.from({ length: 1 << numVars }, (_, term) =>
-    evaluate(ast, term) ? CellState.True : CellState.False,
-  );
-  return { numVars, outputs };
 }

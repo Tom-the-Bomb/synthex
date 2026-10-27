@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.impeccable
+
+DESIGN.md
+PRODUCT.md
