@@ -30,6 +30,8 @@ function Toggle({ open, onClick }: { open: boolean; onClick: () => void }) {
       type="button"
       onClick={onClick}
       title={open ? "collapse" : "expand"}
+      aria-label={open ? "collapse" : "expand"}
+      aria-expanded={open}
       className="relative mx-1 rounded-md px-1 align-middle font-mono text-xs text-fg-2 transition-colors hover:bg-surface-3 hover:text-fg pointer-coarse:after:absolute pointer-coarse:after:-inset-3"
     >
       {open ? "[−]" : "[…]"}

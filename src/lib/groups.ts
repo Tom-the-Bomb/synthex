@@ -1,8 +1,19 @@
 import type { CSSProperties } from "react";
 
 import type { Implicant } from "./algorithm";
+import type { CellState } from "./cellState";
 
 export type Mode = "sop" | "pos" | "off";
+
+// what every view of the function (map, 3D, table, timing) draws from
+export interface ViewProps {
+  numVars: number;
+  outputs: CellState[];
+  onToggle: (term: number) => void;
+  groups: Implicant[];
+  isPOS: boolean;
+  selected: number;
+}
 
 const SOP_COLORS = [
   "#2563eb",

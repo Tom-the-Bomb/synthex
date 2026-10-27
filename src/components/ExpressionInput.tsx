@@ -27,8 +27,8 @@ export default function ExpressionInput({
       const parsed = parseExpression(text, numVars);
       onApply(parsed.numVars, parsed.outputs);
       setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "invalid expression");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "invalid expression");
     }
   };
 

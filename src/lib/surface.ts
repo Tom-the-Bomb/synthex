@@ -1,9 +1,9 @@
 import * as THREE from "three";
 
 import type { Implicant } from "./algorithm";
-import { coveredCells, gray, kmapDims } from "./kmap";
+import { cellTerm, coveredCells, kmapDims } from "./kmap";
 
-type Topology = "flat" | "cylinder" | "torus" | "twoTorus";
+type Topology = "flat" | "cylinder" | "torus";
 
 export interface SurfaceSpec {
   topology: Topology;
@@ -18,14 +18,7 @@ export interface SurfaceSpec {
 export function surfaceSpec(numVars: number): SurfaceSpec {
   const halves = numVars === 5 ? 2 : 1;
   const { rows, cols, rowBits, colBits } = kmapDims(numVars - halves + 1);
-  const topology =
-    numVars <= 2
-      ? "flat"
-      : numVars === 3
-        ? "cylinder"
-        : halves === 2
-          ? "twoTorus"
-          : "torus";
+  const topology = numVars <= 2 ? "flat" : numVars === 3 ? "cylinder" : "torus";
   return { topology, cols, rows, halves, colBits, rowBits };
 }
 
@@ -35,8 +28,9 @@ function surfaceTerm(
   row: number,
   col: number,
 ): number {
-  const eBit = spec.colBits + spec.rowBits;
-  return (half << eBit) | (gray(row) << spec.colBits) | gray(col);
+  return (
+    (half << (spec.colBits + spec.rowBits)) | cellTerm(row, col, spec.cols)
+  );
 }
 
 export function termAssignment(term: number, numVars: number): string {
@@ -60,8 +54,7 @@ const FLAT_CELL = 1.25;
 
 export function makeSurface(spec: SurfaceSpec, half: number): Surface {
   switch (spec.topology) {
-    case "torus":
-    case "twoTorus": {
+    case "torus": {
       const yShift =
         spec.halves === 2 ? (half === 0 ? -TORUS_GAP : TORUS_GAP) : 0;
       return {

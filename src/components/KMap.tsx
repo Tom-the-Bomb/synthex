@@ -5,8 +5,9 @@ import { TermSet } from "./terms";
 import { Button } from "./ui/button";
 import { IconButton } from "./ui/icon-button";
 import { Segmented } from "./ui/segmented";
+import { canvasWell, segmentTrack } from "./ui/styles";
 import type { Implicant } from "../lib/algorithm";
-import { CellState, cellClasses } from "../lib/cellState";
+import { cellClasses } from "../lib/cellState";
 import { implicantLiterals } from "../lib/expression";
 import {
   groupColor,
@@ -14,6 +15,7 @@ import {
   groupText,
   groupTint,
   type Mode,
+  type ViewProps,
 } from "../lib/groups";
 import { bin, cellTerm, coveredCells, gray, kmapDims } from "../lib/kmap";
 import { remScale, useMediaQuery, useWidth } from "../lib/media";
@@ -45,9 +47,15 @@ class LoadBoundary extends Component<
   }
 }
 
+// mt-6 stands in for the 3D legend row, so the box doesn't move once it loads
 function Well({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-6 grid h-canvas place-content-center justify-items-center gap-3 rounded-lg border border-line bg-surface-2 px-6 text-center text-xs text-fg-2">
+    <div
+      className={cn(
+        canvasWell,
+        "mt-6 grid place-content-center justify-items-center gap-3 px-6 text-center text-xs text-fg-2",
+      )}
+    >
       {children}
     </div>
   );
@@ -128,7 +136,7 @@ function loops(
   const originY = header + gap;
   return groups.flatMap((group, index) => {
     const { rows, cols } = coveredCells(group, rowCount, colCount, colBits);
-    const pad = inset + (index % 3) * inset;
+    const pad = inset + (index % 3) * inset; // staggered so overlapping loops nest
     const color = groupColor(isPOS, index);
     return runs(rows).flatMap(([r0, r1]) =>
       runs(cols).map(([c0, c1]) => ({
@@ -180,14 +188,6 @@ function GroupExpression({
   );
 }
 
-interface MapProps {
-  numVars: number;
-  outputs: CellState[];
-  onToggle: (term: number) => void;
-  groups: Implicant[];
-  selected: number;
-}
-
 function FlatMap({
   numVars,
   outputs,
@@ -195,25 +195,24 @@ function FlatMap({
   groups,
   selected,
   isPOS,
-}: MapProps & { isPOS: boolean }) {
+}: ViewProps) {
   const { rows, cols, rowBits, colBits } = kmapDims(numVars);
   const wide = useMediaQuery("(min-width: 80rem)");
   const [mapRef, room] = useWidth<HTMLDivElement>(Infinity);
-  const unit = remScale();
-  const gap = GAP * unit;
-  const corner = cornerWidth(colBits, rowBits) * unit;
+  const gap = GAP * remScale;
+  const corner = cornerWidth(colBits, rowBits) * remScale;
   // fit the pane unless cells would get too small; then scroll
   const fit = Math.floor((room - corner) / cols - gap);
   const cell = Math.min(
-    cellSize(numVars, wide) * unit,
-    fit >= MIN_CELL * unit ? fit : Infinity,
+    cellSize(numVars, wide) * remScale,
+    fit >= MIN_CELL * remScale ? fit : Infinity,
   );
   const geometry: Geometry = {
     cell,
     gap,
     corner,
-    header: HEADER * unit,
-    inset: (cell >= 58 * unit ? 4 : 2) * unit,
+    header: HEADER * remScale,
+    inset: (cell >= 58 * remScale ? 4 : 2) * remScale,
   };
 
   return (
@@ -229,13 +228,7 @@ function FlatMap({
           gap,
         }}
       >
-        <div
-          className="relative col-start-1 row-start-1 font-mono text-2xs leading-none text-fg-2"
-          style={{
-            backgroundImage:
-              "linear-gradient(to top right, transparent calc(50% - 0.5px), var(--line-2) calc(50% - 0.5px), var(--line-2) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
-          }}
-        >
+        <div className="relative col-start-1 row-start-1 diagonal-rule font-mono text-2xs leading-none text-fg-2">
           <span className="absolute top-0 -right-1 whitespace-nowrap">
             <VarLabels hi={colBits} lo={1} />
           </span>
@@ -330,22 +323,18 @@ function FlatMap({
 }
 
 export default function KMap({
-  numVars,
-  outputs,
-  onToggle,
   mode,
   onModeChange,
-  groups,
-  selected,
   onSelect,
-}: MapProps & {
+  ...map
+}: ViewProps & {
   mode: Mode;
   onModeChange: (mode: Mode) => void;
   onSelect: (index: number) => void;
 }) {
+  const { numVars, groups, selected, isPOS } = map;
   const [view, setView] = useState<View>("flat");
   const [showExpr, setShowExpr] = useState(false);
-  const isPOS = mode === "pos";
 
   const groupCount = groups.length;
   // -1 is "all"; wraps both ways
@@ -371,16 +360,7 @@ export default function KMap({
         />
       </div>
 
-      {view === "flat" && (
-        <FlatMap
-          numVars={numVars}
-          outputs={outputs}
-          onToggle={onToggle}
-          groups={groups}
-          selected={selected}
-          isPOS={isPOS}
-        />
-      )}
+      {view === "flat" && <FlatMap {...map} />}
 
       {view === "3d" && (
         <div className="px-4 pt-1 pb-4">
@@ -401,14 +381,7 @@ export default function KMap({
               }
             >
               <Suspense fallback={<Well>loading 3D…</Well>}>
-                <KMapSurface
-                  numVars={numVars}
-                  outputs={outputs}
-                  onToggle={onToggle}
-                  groups={groups}
-                  isPOS={isPOS}
-                  selected={selected}
-                />
+                <KMapSurface {...map} />
               </Suspense>
             </LoadBoundary>
           ) : (
@@ -424,7 +397,7 @@ export default function KMap({
         <div className="mt-auto flex min-h-13 flex-wrap items-center gap-x-3 gap-y-2 border-t border-line px-4 py-2.5">
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="mr-1 text-xs text-fg-2">Group</span>
-            <div className="flex items-center rounded-lg border border-line bg-surface-2 p-0.5">
+            <div className={cn(segmentTrack, "items-center")}>
               <IconButton label="Previous group" onClick={() => step(-1)}>
                 <ChevronLeft />
               </IconButton>

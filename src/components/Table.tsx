@@ -1,16 +1,6 @@
-import type { Implicant } from "../lib/algorithm";
-import { type CellState, chipClasses } from "../lib/cellState";
-import { groupColor, groupInk, rowGroups } from "../lib/groups";
+import { chipClasses } from "../lib/cellState";
+import { groupColor, groupInk, rowGroups, type ViewProps } from "../lib/groups";
 import { cn } from "../lib/utils";
-
-export interface RowsProps {
-  numVars: number;
-  outputs: CellState[];
-  onToggle: (term: number) => void;
-  groups: Implicant[];
-  isPOS: boolean;
-  selected: number;
-}
 
 export function GroupDots({
   covering,
@@ -41,7 +31,7 @@ export default function Table({
   groups,
   isPOS,
   selected,
-}: RowsProps) {
+}: ViewProps) {
   const vars = Array.from({ length: numVars }, (_, i) => numVars - i);
   const groupsOf = rowGroups(groups, isPOS, selected);
 

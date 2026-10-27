@@ -1,8 +1,8 @@
 import { useId } from "react";
 
-import { GroupDots, type RowsProps } from "./Table";
+import { GroupDots } from "./Table";
 import { CellState } from "../lib/cellState";
-import { rowGroups } from "../lib/groups";
+import { rowGroups, type ViewProps } from "../lib/groups";
 import { remScale, useWidth } from "../lib/media";
 import { cn } from "../lib/utils";
 
@@ -18,14 +18,14 @@ export default function Timing({
   groups,
   isPOS,
   selected,
-}: RowsProps) {
-  const unit = remScale();
-  const row = ROW * unit;
-  const pad = Math.round(PAD * unit);
-  const out = Math.round(OUT * unit);
+}: ViewProps) {
+  const row = ROW * remScale;
+  const pad = Math.round(PAD * remScale);
+  const out = Math.round(OUT * remScale);
+  const lanesMin = numVars * LANE * remScale;
   const hatch = useId();
-  const columns = `2.75rem minmax(${numVars * LANE * unit}px, 1fr) ${out}px 2.75rem`;
-  const minWidth = `calc(5.5rem + ${(numVars * LANE + OUT) * unit}px)`;
+  const columns = `2.75rem minmax(${lanesMin}px, 1fr) ${out}px 2.75rem`;
+  const minWidth = `calc(5.5rem + ${lanesMin + out}px)`;
 
   // drawn in real pixels: a scaled viewBox gave equal strokes unequal weights
   const [lanesRef, lanesWidth] = useWidth<HTMLSpanElement>(numVars * 32);
@@ -44,8 +44,6 @@ export default function Timing({
         ? out / 2
         : pad;
 
-  // header outside the scroller (a sticky one leaked rows above it); matching
-  // gutters keep the columns aligned
   return (
     <div className="scroll-slim flex max-h-144 min-h-0 flex-1 flex-col overflow-x-auto lg:max-h-none">
       <svg width="0" height="0" className="absolute" aria-hidden="true">
@@ -69,6 +67,8 @@ export default function Timing({
         </defs>
       </svg>
 
+      {/* header outside the scroller (a sticky one leaked rows above it);
+          matching gutters keep the columns aligned */}
       <div
         className="grid shrink-0 scrollbar-gutter-stable overflow-hidden border-b border-line py-2 font-mono text-2xs font-medium text-fg-2"
         style={{ gridTemplateColumns: columns, minWidth }}
@@ -117,10 +117,10 @@ export default function Timing({
                 shapeRendering="crispEdges"
                 strokeLinecap="square"
               >
-                {vars.map((_, i) => {
-                  const bit = numVars - 1 - i;
+                {vars.map((v, i) => {
+                  const bit = v - 1;
                   const high = ((term >> bit) & 1) === 1;
-                  const wasHigh = term > 0 && (((term - 1) >> bit) & 1) === 1;
+                  const wasHigh = (((term - 1) >> bit) & 1) === 1;
                   const x = rail(i, high);
                   const xp = term > 0 ? rail(i, wasHigh) : x;
                   return <path key={bit} d={`M${xp} 0.5H${x}M${x} 0V${row}`} />;

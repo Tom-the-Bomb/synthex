@@ -17,7 +17,7 @@
   --one-ink: #1d1400;
   --one-fg: #f3c14d;
   --one-soft: color-mix(in srgb, var(--one) 10%, var(--surface));
-  --one-edge: rgb(240 180 41 / 0.34);
+  --one-edge: color-mix(in srgb, var(--one) 34%, transparent);
   --caret: #7b93ff;
   --danger: #ff8080;
   --primary: #eeeff1;
@@ -128,14 +128,18 @@
     outline: 3px solid color-mix(in oklab, var(--color-ring) 50%, transparent);
     outline-offset: 0;
   }
+}
 
-  .font-mono {
-    font-variant-numeric: tabular-nums;
-  }
+/* Radix marks a chosen toggle data-state="on" and a chosen tab "active" */
+@custom-variant chosen (&:is([data-state="on"], [data-state="active"]));
 
-  .katex {
-    color: inherit;
-  }
+@utility diagonal-rule {
+  background-image: linear-gradient(
+    to top right,
+    transparent calc(50% - 0.5px),
+    var(--line-2) calc(50% - 0.5px) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
 }
 
 .scroll-slim {

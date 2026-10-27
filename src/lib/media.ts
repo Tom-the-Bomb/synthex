@@ -37,7 +37,6 @@ export function useWidth<T extends HTMLElement>(initial: number) {
   return [ref, width] as const;
 }
 
-// the browser's text-size setting, relative to the 16px default
-export function remScale(): number {
-  return parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
-}
+// the browser's text-size setting relative to 16px, read once at load
+export const remScale =
+  parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;

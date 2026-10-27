@@ -13,7 +13,7 @@ import { segmentItem, segmentTrack } from "./components/ui/styles";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { computeCover, Table as TermTable } from "./lib/algorithm";
 import { CellState, toggleCellState } from "./lib/cellState";
-import type { Mode } from "./lib/groups";
+import type { Mode, ViewProps } from "./lib/groups";
 import { MAX_KMAP_VARS, MAX_VARS } from "./lib/kmap";
 import { cn } from "./lib/utils";
 
@@ -21,6 +21,7 @@ const MIN_VARS = 1;
 const DEFAULT_VARS = 4;
 
 type TableView = "table" | "timing";
+const tabPanel = "flex min-h-0 flex-1 flex-col focus-visible:-outline-offset-2";
 
 function makeOutputs(numVars: number): CellState[] {
   return Array.from({ length: 1 << numVars }, () => CellState.False);
@@ -97,9 +98,21 @@ function App() {
     );
   }
 
-  function applyExpression(nextVars: number, nextOutputs: CellState[]) {
+  // a selection indexes the current cover, so replacing the cover clears it
+  function replaceFunction(nextVars: number, nextOutputs: CellState[]) {
     setNumVars(nextVars);
     setOutputs(nextOutputs);
+    setSelected(-1);
+  }
+
+  function clear() {
+    replaceFunction(numVars, makeOutputs(numVars));
+    setClearNonce((n) => n + 1);
+  }
+
+  function changeMode(next: Mode) {
+    setMode(next);
+    setSelected(-1);
   }
 
   function selectGroup(isPOS: boolean, index: number) {
@@ -118,7 +131,7 @@ function App() {
   const groups = mode === "pos" ? posCover : mode === "sop" ? sopCover : [];
   const active = selected < groups.length ? selected : -1;
   const hasKMap = numVars <= MAX_KMAP_VARS;
-  const rows = {
+  const view: ViewProps = {
     numVars,
     outputs,
     onToggle: toggle,
@@ -167,7 +180,7 @@ function App() {
                 href="https://github.com/tom-the-bomb/synthex"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Source on GitHub, by Tom-the-Bomb"
+                aria-label="Tom-the-Bomb 2026, source on GitHub"
               >
                 <svg
                   viewBox="0 0 16 16"
@@ -187,7 +200,7 @@ function App() {
             <ExpressionInput
               key={clearNonce}
               numVars={numVars}
-              onApply={applyExpression}
+              onApply={replaceFunction}
               className="w-full lg:w-auto lg:flex-1"
             />
             <div className="flex flex-wrap items-center gap-2">
@@ -199,7 +212,6 @@ function App() {
               >
                 <IconButton
                   label="Fewer variables"
-                  size="default"
                   onClick={() => changeVars(numVars - 1)}
                   disabled={numVars <= MIN_VARS}
                   className="h-full w-8 rounded-r-none hover:bg-surface-2"
@@ -214,7 +226,6 @@ function App() {
                 </span>
                 <IconButton
                   label="More variables"
-                  size="default"
                   onClick={() => changeVars(numVars + 1)}
                   disabled={numVars >= MAX_VARS}
                   className="h-full w-8 rounded-l-none hover:bg-surface-2"
@@ -222,13 +233,7 @@ function App() {
                   <Plus />
                 </IconButton>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setOutputs(makeOutputs(numVars));
-                  setClearNonce((n) => n + 1);
-                }}
-              >
+              <Button variant="outline" onClick={clear}>
                 Clear
               </Button>
             </div>
@@ -255,13 +260,9 @@ function App() {
             >
               {hasKMap ? (
                 <KMap
-                  numVars={numVars}
-                  outputs={outputs}
-                  onToggle={toggle}
+                  {...view}
                   mode={mode}
-                  onModeChange={setMode}
-                  groups={groups}
-                  selected={active}
+                  onModeChange={changeMode}
                   onSelect={setSelected}
                 />
               ) : (
@@ -318,17 +319,11 @@ function App() {
                     </Tabs.Trigger>
                   </Tabs.List>
                 </div>
-                <Tabs.Content
-                  value="table"
-                  className="flex min-h-0 flex-1 flex-col focus-visible:-outline-offset-2"
-                >
-                  <Table {...rows} />
+                <Tabs.Content value="table" className={tabPanel}>
+                  <Table {...view} />
                 </Tabs.Content>
-                <Tabs.Content
-                  value="timing"
-                  className="flex min-h-0 flex-1 flex-col focus-visible:-outline-offset-2"
-                >
-                  <Timing {...rows} />
+                <Tabs.Content value="timing" className={tabPanel}>
+                  <Timing {...view} />
                 </Tabs.Content>
               </Tabs.Root>
             </Pane>

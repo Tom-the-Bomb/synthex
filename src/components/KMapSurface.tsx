@@ -1,6 +1,6 @@
 // drei's Text needs a .woff; without one it fetches a font from a CDN
 import labelFont from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff?url";
-import { Line, OrbitControls, Text } from "@react-three/drei";
+import { Line, OrbitControls, Text, useCursor } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import {
   Suspense,
@@ -15,9 +15,9 @@ import {
 } from "react";
 import * as THREE from "three";
 
-import type { Implicant } from "../lib/algorithm";
+import { canvasWell } from "./ui/styles";
 import { CellState } from "../lib/cellState";
-import { groupColor } from "../lib/groups";
+import { groupColor, type ViewProps } from "../lib/groups";
 import { useMediaQuery } from "../lib/media";
 import {
   surfaceSpec,
@@ -31,6 +31,7 @@ import {
   type Surface,
   type SurfaceSpec,
 } from "../lib/surface";
+import { cn } from "../lib/utils";
 
 type Tip = { term: number; x: number; y: number } | null;
 
@@ -65,6 +66,7 @@ type TipStore = ReturnType<typeof createTipStore>;
 
 function HoverTip({ store, numVars }: { store: TipStore; numVars: number }) {
   const tip = useSyncExternalStore(store.subscribe, store.get);
+  useCursor(tip !== null);
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -110,6 +112,7 @@ interface Scene {
   link: string;
 }
 
+// three.js can't read CSS variables, so the amber here mirrors index.css
 const SCENES: Record<"dark" | "light", Scene> = {
   dark: {
     fill: { "1": "#f0b429", "0": "#26282e", x: "#40434b" },
@@ -217,15 +220,9 @@ function Cell({
           e.stopPropagation();
           onToggle(cell.term);
         }}
-        onPointerOver={(e) => {
-          showTip(e);
-          document.body.style.cursor = "pointer";
-        }}
+        onPointerOver={showTip}
         onPointerMove={showTip}
-        onPointerOut={() => {
-          tips.hide();
-          document.body.style.cursor = "auto";
-        }}
+        onPointerOut={tips.hide}
       >
         <meshStandardMaterial
           color={scene.fill[state]}
@@ -241,9 +238,6 @@ function Cell({
         font={labelFont}
         fontSize={0.34}
         color={scene.text[state]}
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0}
       >
         {state}
       </Text>
@@ -396,19 +390,20 @@ function sceneShape(numVars: number) {
             ],
           }));
 
-  const cameraPosition: [number, number, number] =
-    spec.topology === "cylinder"
+  const flat = spec.topology === "flat";
+  const cameraPosition: [number, number, number] = flat
+    ? [0.6, 0.6, 5.5]
+    : spec.topology === "cylinder"
       ? [3.4, 1.2, 6]
-      : spec.topology === "flat"
-        ? [0.6, 0.6, 5.5]
-        : [5, 3.6, 7.5];
+      : [5, 3.6, 7.5];
 
   return {
     spec,
     surfaces,
     cells,
     links,
-    seg: spec.topology === "flat" ? 1 : 8,
+    seg: flat ? 1 : 8,
+    baseSeg: flat ? 1 : 96,
     cameraPosition,
   };
 }
@@ -420,32 +415,15 @@ export default function KMapSurface({
   groups,
   selected,
   isPOS,
-}: {
-  numVars: number;
-  outputs: CellState[];
-  onToggle: (term: number) => void;
-  groups: Implicant[];
-  selected: number;
-  isPOS: boolean;
-}) {
+}: ViewProps) {
   const [tips] = useState(createTipStore);
-  const scene =
-    SCENES[useMediaQuery("(prefers-color-scheme: light)") ? "light" : "dark"];
-  // unmounting mid-hover skips pointer-out
-  useEffect(
-    () => () => {
-      document.body.style.cursor = "auto";
-    },
-    [],
-  );
+  const light = useMediaQuery("(prefers-color-scheme: light)");
+  const scene = SCENES[light ? "light" : "dark"];
 
   // stable identity, or every Patch rebuilds its geometry
-  const { spec, surfaces, cells, links, seg, cameraPosition } = useMemo(
-    () => sceneShape(numVars),
-    [numVars],
-  );
+  const { spec, surfaces, cells, links, seg, baseSeg, cameraPosition } =
+    useMemo(() => sceneShape(numVars), [numVars]);
   const bands = bandLayouts(groups, spec);
-  const baseSeg = seg === 1 ? 1 : 96;
 
   return (
     <div className="flex w-full flex-col gap-2">
@@ -461,7 +439,7 @@ export default function KMapSurface({
         ))}
       </div>
 
-      <div className="relative h-canvas w-full overflow-hidden rounded-lg border border-line bg-surface-2">
+      <div className={cn(canvasWell, "relative w-full overflow-hidden")}>
         {/* overrides OrbitControls' touch-action: none so swipes scroll the page */}
         <Canvas
           className="touch-pan-y!"

@@ -138,7 +138,7 @@ function CoverRow({
       }
     >
       <TermChips
-        prefix="f = \;"
+        prefix={"f = \\;"}
         terms={coverTerms(cover, numVars, isPOS)}
         sep={isPOS ? "\\," : "\\:+\\:"}
         colors={cover.map((_, i) => groupColor(isPOS, i))}
@@ -176,7 +176,7 @@ function CanonicalRow({
                     : "\\,+ \\textstyle\\sum"
                 }
               />
-              <TermSet symbol="\,d" terms={dontCares} />
+              <TermSet symbol={"\\,d"} terms={dontCares} />
             </>
           )}
         </span>
