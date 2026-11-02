@@ -175,17 +175,13 @@ function GroupExpression({
   }
 
   if (!isPOS) {
-    return <span className="inline-flex gap-0.5">{literals}</span>;
+    return <span className="inline-flex flex-wrap gap-0.5">{literals}</span>;
   }
 
   const sum = literals.flatMap((literal, i) =>
     i === 0 ? [literal] : [<span key={`plus-${i}`}> + </span>, literal],
   );
-  return (
-    <span className="whitespace-nowrap">
-      {literals.length > 1 ? <>({sum})</> : sum}
-    </span>
-  );
+  return <span>{literals.length > 1 ? <>({sum})</> : sum}</span>;
 }
 
 function FlatMap({
@@ -394,10 +390,10 @@ export default function KMap({
       )}
 
       {groupCount > 0 && (
-        <div className="mt-auto flex min-h-13 flex-wrap items-center gap-x-3 gap-y-2 border-t border-line px-4 py-2.5">
-          <div className="flex shrink-0 items-center gap-1.5">
+        <div className="mt-auto flex min-h-13 flex-wrap items-center gap-x-3 gap-y-2 border-t border-line px-4 py-2.5 contain-inline-size">
+          <div className="flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-xs text-fg-2">Group</span>
-            <div className={cn(segmentTrack, "items-center")}>
+            <div className={cn(segmentTrack, "flex-nowrap items-center")}>
               <IconButton label="Previous group" onClick={() => step(-1)}>
                 <ChevronLeft />
               </IconButton>
@@ -410,35 +406,40 @@ export default function KMap({
             </div>
           </div>
           {selected >= 0 && (
-            <div className="flex min-w-0 items-center gap-2 text-sm">
+            <div className="flex min-w-0 flex-wrap items-start gap-2 text-sm leading-7">
               <span
                 className="shrink-0 font-medium"
                 style={{ color: groupText(groupColor(isPOS, selected)) }}
               >
                 Group {selected + 1}
               </span>
-              <span className="min-w-0 font-mono text-fg">
-                {showExpr ? (
-                  <GroupExpression
-                    group={groups[selected]}
-                    numVars={numVars}
-                    isPOS={isPOS}
-                  />
-                ) : (
-                  <TermSet
-                    key={selected}
-                    symbol={isPOS ? "M" : "m"}
-                    terms={[...groups[selected].covered].sort((a, b) => a - b)}
-                    plain
-                  />
-                )}
-              </span>
-              <IconButton
-                label={showExpr ? "Show terms" : "Show expression"}
-                onClick={() => setShowExpr((v) => !v)}
-              >
-                <ArrowLeftRight />
-              </IconButton>
+              {/* from a zero basis, it drops below the label only when its narrowest form doesn't fit */}
+              <div className="flex grow basis-0 items-start gap-2">
+                <span className="py-1 font-mono leading-5 text-fg">
+                  {showExpr ? (
+                    <GroupExpression
+                      group={groups[selected]}
+                      numVars={numVars}
+                      isPOS={isPOS}
+                    />
+                  ) : (
+                    <TermSet
+                      key={selected}
+                      symbol={isPOS ? "M" : "m"}
+                      terms={[...groups[selected].covered].sort(
+                        (a, b) => a - b,
+                      )}
+                      plain
+                    />
+                  )}
+                </span>
+                <IconButton
+                  label={showExpr ? "Show terms" : "Show expression"}
+                  onClick={() => setShowExpr((v) => !v)}
+                >
+                  <ArrowLeftRight />
+                </IconButton>
+              </div>
             </div>
           )}
         </div>

@@ -18,7 +18,6 @@ import * as THREE from "three";
 import { canvasWell } from "./ui/styles";
 import { CellState } from "../lib/cellState";
 import { groupColor, type ViewProps } from "../lib/groups";
-import { useMediaQuery } from "../lib/media";
 import {
   surfaceSpec,
   makeSurface,
@@ -31,6 +30,7 @@ import {
   type Surface,
   type SurfaceSpec,
 } from "../lib/surface";
+import { useTheme, type Theme } from "../lib/theme";
 import { cn } from "../lib/utils";
 
 type Tip = { term: number; x: number; y: number } | null;
@@ -113,7 +113,7 @@ interface Scene {
 }
 
 // three.js can't read CSS variables, so the amber here mirrors index.css
-const SCENES: Record<"dark" | "light", Scene> = {
+const SCENES: Record<Theme, Scene> = {
   dark: {
     fill: { "1": "#f0b429", "0": "#26282e", x: "#40434b" },
     emissive: { "1": "#3a2900", "0": "#0b0c0e", x: "#111215" },
@@ -417,8 +417,7 @@ export default function KMapSurface({
   isPOS,
 }: ViewProps) {
   const [tips] = useState(createTipStore);
-  const light = useMediaQuery("(prefers-color-scheme: light)");
-  const scene = SCENES[light ? "light" : "dark"];
+  const scene = SCENES[useTheme()];
 
   // stable identity, or every Patch rebuilds its geometry
   const { spec, surfaces, cells, links, seg, baseSeg, cameraPosition } =

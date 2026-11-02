@@ -16,7 +16,7 @@ export function GroupDots({
       {covering.map((i) => (
         <span
           key={i}
-          className="size-1.5 rounded-full"
+          className="size-1.5 rounded-full forced-colors:bg-[CanvasText]!"
           style={{ backgroundColor: groupInk(groupColor(isPOS, i)) }}
         />
       ))}

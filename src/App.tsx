@@ -1,4 +1,4 @@
-import { Minus, Plus } from "lucide-react";
+import { Minus, Moon, Plus, Sun } from "lucide-react";
 import { Tabs } from "radix-ui";
 import { useId, useState, type ReactNode } from "react";
 
@@ -15,6 +15,7 @@ import { computeCover, Table as TermTable } from "./lib/algorithm";
 import { CellState, toggleCellState } from "./lib/cellState";
 import type { Mode, ViewProps } from "./lib/groups";
 import { MAX_KMAP_VARS, MAX_VARS } from "./lib/kmap";
+import { setTheme, useTheme } from "./lib/theme";
 import { cn } from "./lib/utils";
 
 const MIN_VARS = 1;
@@ -47,7 +48,7 @@ function Pane({
         className,
       )}
     >
-      <div className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-line px-4 py-3">
         <h2 id={id} className="text-sm font-semibold">
           {title}
         </h2>
@@ -84,6 +85,7 @@ function App() {
   const [mode, setMode] = useState<Mode>("sop");
   const [selected, setSelected] = useState(-1);
   const [tableView, setTableView] = useState<TableView>("table");
+  const nextTheme = useTheme() === "dark" ? "light" : "dark";
 
   function changeVars(next: number) {
     setOutputs((prev) =>
@@ -167,9 +169,15 @@ function App() {
               Karnaugh map boolean minimizer
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Readout label="Vars" value={numVars} />
             <Readout label="Rows" value={outputs.length} />
+            <IconButton
+              label={`Switch to ${nextTheme} theme`}
+              onClick={() => setTheme(nextTheme)}
+            >
+              {nextTheme === "light" ? <Sun /> : <Moon />}
+            </IconButton>
             <Button
               asChild
               variant="ghost"
@@ -305,7 +313,7 @@ function App() {
                 className="flex min-h-0 flex-1 flex-col"
               >
                 {/* own layer, or rows bleed over this border at fractional zoom */}
-                <div className="relative z-20 flex transform-gpu items-center gap-2 border-b border-line bg-surface px-4 py-2.5">
+                <div className="relative z-20 flex transform-gpu flex-wrap items-center gap-2 border-b border-line bg-surface px-4 py-2.5">
                   <span className="text-xs text-fg-2">View</span>
                   <Tabs.List
                     aria-label="Truth table view"

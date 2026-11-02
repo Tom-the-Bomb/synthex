@@ -25,19 +25,23 @@ function Row({
   return (
     <div
       className={cn(
-        "grid items-baseline gap-3 border-b border-line px-4 py-3 text-lg last:border-b-0",
+        "grid items-baseline gap-3 border-b border-line px-4 py-3 text-lg last:border-b-0 @max-xs:items-center",
         action
-          ? "grid-cols-[2.75rem_minmax(0,1fr)_auto]"
-          : "grid-cols-[2.75rem_minmax(0,1fr)]",
+          ? "grid-cols-[2.75rem_minmax(0,1fr)_auto] @max-xs:grid-cols-[minmax(0,1fr)_auto]"
+          : "grid-cols-[2.75rem_minmax(0,1fr)] @max-xs:grid-cols-1",
       )}
     >
       <span className="text-2xs font-medium tracking-[0.06em] text-fg-2 uppercase">
         {tag}
       </span>
-      <div className="scroll-slim min-w-0 overflow-x-auto overflow-y-hidden py-1">
+      <div className="scroll-slim min-w-0 overflow-x-auto overflow-y-hidden py-1 @max-xs:order-last @max-xs:col-span-full">
         {children}
       </div>
-      {action && <div className="flex self-start pt-0.5">{action}</div>}
+      {action && (
+        <div className="flex self-start pt-0.5 @max-xs:self-center">
+          {action}
+        </div>
+      )}
     </div>
   );
 }
@@ -80,7 +84,7 @@ function GroupList({
                 type="button"
                 onClick={() => onSelect(i)}
                 aria-pressed={isSelected}
-                className="grid w-full grid-cols-[0.625rem_1.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-[background-color,box-shadow] duration-150 ease-out hover:bg-surface-2"
+                className="grid w-full grid-cols-[0.625rem_1.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-[background-color,box-shadow] duration-150 ease-out hover:bg-surface-2 @max-xs:grid-cols-[0.625rem_1.25rem_minmax(0,1fr)] @max-xs:gap-y-1 forced-colors:aria-pressed:outline"
                 style={
                   isSelected
                     ? {
@@ -101,7 +105,7 @@ function GroupList({
                 >
                   <Tex tex={implicantLatex(group, numVars, isPOS)} />
                 </span>
-                <span className="font-mono text-xs whitespace-nowrap text-fg-2">
+                <span className="font-mono text-xs whitespace-nowrap text-fg-2 @max-xs:col-start-3 @max-xs:whitespace-normal">
                   {shortList(isPOS ? "M" : "m", terms)}
                 </span>
               </button>
@@ -206,7 +210,7 @@ export default function Output({
   const isPOS = mode === "pos";
 
   return (
-    <div className="flex flex-col">
+    <div className="@container flex flex-col">
       <CoverRow
         isPOS={false}
         cover={sopCover}

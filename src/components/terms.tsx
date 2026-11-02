@@ -49,46 +49,40 @@ export function TermSet({
   plain?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const long = terms.length > COLLAPSE_LIMIT;
+  // the K-map's group row is narrow, so it collapses as early as an expression
+  const [limit, edge] = plain
+    ? [EXPR_LIMIT, EXPR_EDGE]
+    : [COLLAPSE_LIMIT, EDGE];
+  const long = terms.length > limit;
   const collapsed = long && !open;
 
   // lets KaTeX wrap after any comma
   const sep = plain ? ", " : ",\\,\\allowbreak ";
   const lead = plain ? " " : "\\,";
   // keeps the last two terms together so "11)" never wraps alone
+  const glue = plain ? ",\u00a0" : ",\\,";
   const join = (nums: number[]) =>
-    plain || nums.length < 2
+    nums.length < 2
       ? nums.join(sep)
-      : `${nums.slice(0, -1).join(sep)},\\,${nums[nums.length - 1]}`;
+      : `${nums.slice(0, -1).join(sep)}${glue}${nums[nums.length - 1]}`;
   const frag = (text: string) =>
     plain ? <span>{text}</span> : <Tex tex={text} />;
   const toggle = long ? (
     <Toggle open={open} onClick={() => setOpen((o) => !o)} />
   ) : null;
 
-  const wrap = plain ? "whitespace-nowrap" : "";
-  const body = collapsed ? (
-    <span className={wrap}>
-      {frag(`${symbol}(${join(terms.slice(0, EDGE))}${sep}`)}
+  return collapsed ? (
+    <span>
+      {frag(`${symbol}(${join(terms.slice(0, edge))}${sep}`)}
       {toggle}
-      {frag(`${lead}${join(terms.slice(-EDGE))})`)}
+      {frag(`${lead}${join(terms.slice(-edge))})`)}
     </span>
   ) : (
-    <span className={wrap}>
+    <span>
       {frag(`${symbol}(${join(terms)})`)}
       {toggle}
     </span>
   );
-
-  if (plain && open) {
-    return (
-      <div className="scroll-slim max-w-[min(60vw,22rem)] min-w-0 overflow-x-auto">
-        {body}
-      </div>
-    );
-  }
-
-  return body;
 }
 
 export function TermChips({
@@ -125,7 +119,7 @@ export function TermChips({
         onClick={() => onSelect(i)}
         aria-pressed={isSelected}
         aria-label={`group ${i + 1}`}
-        className="relative rounded-md px-1 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out hover:bg-(--chip-hover) pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2"
+        className="relative rounded-md px-1 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out hover:bg-(--chip-hover) forced-colors:aria-pressed:outline pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2"
         style={
           {
             color: groupText(color),
