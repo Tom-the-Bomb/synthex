@@ -19,12 +19,41 @@
       name="theme-color"
       content="#08090a"
       media="(prefers-color-scheme: dark)"
+      data-theme="dark"
     />
     <meta
       name="theme-color"
       content="#f5f5f6"
       media="(prefers-color-scheme: light)"
+      data-theme="light"
     />
+    <!-- before first paint: the saved theme, else the system's -->
+    <script>
+      {
+        const root = document.documentElement;
+        const system = matchMedia("(prefers-color-scheme: light)");
+        const apply = () => {
+          const theme =
+            localStorage.getItem("theme") ??
+            (system.matches ? "light" : "dark");
+          // switch in one frame; colour transitions would fade only some elements
+          const still = document.createElement("style");
+          still.textContent = "* { transition: none !important }";
+          document.head.append(still);
+          root.dataset.theme = theme;
+          for (const meta of document.querySelectorAll(
+            'meta[name="theme-color"]',
+          )) {
+            meta.media = meta.dataset.theme === theme ? "all" : "not all";
+          }
+          getComputedStyle(root).color;
+          requestAnimationFrame(() => still.remove());
+        };
+        apply();
+        system.addEventListener("change", apply);
+        addEventListener("themechange", apply);
+      }
+    </script>
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://synthex.tomthebomb.dev/" />
 

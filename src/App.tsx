@@ -1,4 +1,4 @@
-import { Minus, Plus } from "lucide-react";
+import { Minus, Moon, Plus, Sun } from "lucide-react";
 import { Tabs } from "radix-ui";
 import { useId, useState, type ReactNode } from "react";
 
@@ -15,6 +15,7 @@ import { computeCover, Table as TermTable } from "./lib/algorithm";
 import { CellState, toggleCellState } from "./lib/cellState";
 import type { Mode, ViewProps } from "./lib/groups";
 import { MAX_KMAP_VARS, MAX_VARS } from "./lib/kmap";
+import { setTheme, useTheme } from "./lib/theme";
 import { cn } from "./lib/utils";
 
 const MIN_VARS = 1;
@@ -84,6 +85,7 @@ function App() {
   const [mode, setMode] = useState<Mode>("sop");
   const [selected, setSelected] = useState(-1);
   const [tableView, setTableView] = useState<TableView>("table");
+  const nextTheme = useTheme() === "dark" ? "light" : "dark";
 
   function changeVars(next: number) {
     setOutputs((prev) =>
@@ -170,6 +172,12 @@ function App() {
           <div className="flex shrink-0 items-center gap-2">
             <Readout label="Vars" value={numVars} />
             <Readout label="Rows" value={outputs.length} />
+            <IconButton
+              label={`Switch to ${nextTheme} theme`}
+              onClick={() => setTheme(nextTheme)}
+            >
+              {nextTheme === "light" ? <Sun /> : <Moon />}
+            </IconButton>
             <Button
               asChild
               variant="ghost"
