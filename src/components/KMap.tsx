@@ -394,7 +394,7 @@ export default function KMap({
       )}
 
       {groupCount > 0 && (
-        <div className="mt-auto flex min-h-13 flex-wrap items-center gap-x-3 gap-y-2 border-t border-line px-4 py-2.5">
+        <div className="mt-auto flex min-h-13 flex-wrap items-center gap-x-3 gap-y-2 border-t border-line px-4 py-2.5 contain-inline-size">
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="mr-1 text-xs text-fg-2">Group</span>
             <div className={cn(segmentTrack, "items-center")}>
@@ -410,14 +410,14 @@ export default function KMap({
             </div>
           </div>
           {selected >= 0 && (
-            <div className="flex min-w-0 items-center gap-2 text-sm">
+            <div className="flex min-w-0 items-start gap-2 text-sm leading-7">
               <span
                 className="shrink-0 font-medium"
                 style={{ color: groupText(groupColor(isPOS, selected)) }}
               >
                 Group {selected + 1}
               </span>
-              <span className="min-w-0 font-mono text-fg">
+              <span className="min-w-0 py-1 font-mono leading-5 text-fg">
                 {showExpr ? (
                   <GroupExpression
                     group={groups[selected]}
