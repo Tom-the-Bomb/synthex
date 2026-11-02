@@ -84,7 +84,7 @@ function GroupList({
                 type="button"
                 onClick={() => onSelect(i)}
                 aria-pressed={isSelected}
-                className="grid w-full grid-cols-[0.625rem_1.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-[background-color,box-shadow] duration-150 ease-out hover:bg-surface-2 @max-xs:grid-cols-[0.625rem_1.25rem_minmax(0,1fr)] @max-xs:gap-y-1"
+                className="grid w-full grid-cols-[0.625rem_1.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-[background-color,box-shadow] duration-150 ease-out hover:bg-surface-2 @max-xs:grid-cols-[0.625rem_1.25rem_minmax(0,1fr)] @max-xs:gap-y-1 forced-colors:aria-pressed:outline"
                 style={
                   isSelected
                     ? {

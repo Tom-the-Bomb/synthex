@@ -119,7 +119,7 @@ export function TermChips({
         onClick={() => onSelect(i)}
         aria-pressed={isSelected}
         aria-label={`group ${i + 1}`}
-        className="relative rounded-md px-1 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out hover:bg-(--chip-hover) pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2"
+        className="relative rounded-md px-1 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out hover:bg-(--chip-hover) forced-colors:aria-pressed:outline pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2"
         style={
           {
             color: groupText(color),
